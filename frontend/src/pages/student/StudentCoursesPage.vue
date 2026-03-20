@@ -34,7 +34,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '应用筛选' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">应用筛选</button>
             <button class="ghost-btn" type="button" @click="resetFilters">重置</button>
           </div>
         </form>
@@ -142,6 +142,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { createEnrollment, fetchMyEnrollments, fetchRounds, fetchSections, fetchTerms } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, joinSectionSchedule, roundScopeOptions } from '../../utils/formatters'
 
 const terms = ref([])
@@ -238,20 +239,22 @@ async function loadPageData() {
   message.text = ''
 
   try {
-    const [roundList, sectionList, enrollmentList] = await Promise.all([
-      fetchRounds({ termId: filters.termId }),
-      fetchSections({ termId: filters.termId, q: filters.q }),
-      fetchMyEnrollments({ termId: filters.termId }),
-    ])
+    await withPageLoading(async () => {
+      const [roundList, sectionList, enrollmentList] = await Promise.all([
+        fetchRounds({ termId: filters.termId }),
+        fetchSections({ termId: filters.termId, q: filters.q }),
+        fetchMyEnrollments({ termId: filters.termId }),
+      ])
 
-    rounds.value = roundList
-    sections.value = sectionList
-    myEnrollments.value = enrollmentList
+      rounds.value = roundList
+      sections.value = sectionList
+      myEnrollments.value = enrollmentList
 
-    if (!rounds.value.some((item) => String(item.id) === selectedRoundId.value)) {
-      const defaultRound = pickDefaultRound(rounds.value, filters.termId)
-      selectedRoundId.value = defaultRound ? String(defaultRound.id) : ''
-    }
+      if (!rounds.value.some((item) => String(item.id) === selectedRoundId.value)) {
+        const defaultRound = pickDefaultRound(rounds.value, filters.termId)
+        selectedRoundId.value = defaultRound ? String(defaultRound.id) : ''
+      }
+    })
   } catch (error) {
     message.text = error.message || '加载课程目录失败。'
     message.type = 'error'

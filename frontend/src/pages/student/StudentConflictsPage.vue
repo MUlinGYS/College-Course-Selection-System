@@ -19,7 +19,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '执行检查' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">执行检查</button>
             <button class="ghost-btn" type="button" @click="resetFilter">重置</button>
           </div>
         </form>
@@ -111,6 +111,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 
 import { fetchMyConflicts, fetchTerms } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayLabel } from '../../utils/formatters'
 
 const terms = ref([])
@@ -129,7 +130,9 @@ const selectedTermName = computed(() => {
 })
 
 async function loadTermsOnly() {
-  terms.value = await fetchTerms()
+  await withPageLoading(async () => {
+    terms.value = await fetchTerms()
+  })
 }
 
 async function loadConflicts() {
@@ -137,7 +140,9 @@ async function loadConflicts() {
   message.text = ''
 
   try {
-    conflicts.value = await fetchMyConflicts({ termId: termId.value })
+    await withPageLoading(async () => {
+      conflicts.value = await fetchMyConflicts({ termId: termId.value })
+    })
     message.text = conflicts.value.length ? '已完成冲突检查。' : '未检测到时间冲突。'
     message.type = 'success'
   } catch (error) {

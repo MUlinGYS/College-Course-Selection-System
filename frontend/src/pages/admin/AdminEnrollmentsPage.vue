@@ -51,7 +51,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '应用筛选' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">应用筛选</button>
             <button class="ghost-btn" type="button" @click="resetFilters">重置</button>
           </div>
         </form>
@@ -145,6 +145,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 
 import { fetchEnrollmentRecords, fetchRounds, fetchSections, fetchUsers } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import {
   enrollmentStatusLabel,
   enrollmentStatusOptions,
@@ -175,11 +176,9 @@ const enrolledCount = computed(() => enrollments.value.filter((item) => item.sta
 const droppedCount = computed(() => enrollments.value.filter((item) => item.status === 'dropped').length)
 
 async function loadBaseData() {
-  const [roundList, sectionList, studentList] = await Promise.all([
-    fetchRounds(),
-    fetchSections(),
-    fetchUsers({ role: 'student' }),
-  ])
+  const [roundList, sectionList, studentList] = await withPageLoading(async () =>
+    Promise.all([fetchRounds(), fetchSections(), fetchUsers({ role: 'student' })]),
+  )
 
   rounds.value = roundList
   sections.value = sectionList
@@ -191,7 +190,9 @@ async function loadEnrollments() {
   message.text = ''
 
   try {
-    enrollments.value = await fetchEnrollmentRecords(filters)
+    await withPageLoading(async () => {
+      enrollments.value = await fetchEnrollmentRecords(filters)
+    })
   } catch (error) {
     message.text = error.message || '加载选课记录失败。'
     message.type = 'error'

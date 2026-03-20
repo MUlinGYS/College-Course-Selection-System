@@ -75,6 +75,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { createEnrollment, fetchMyEnrollments, fetchRounds, fetchSection } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, joinSectionSchedule, roundScopeOptions } from '../../utils/formatters'
 
 const route = useRoute()
@@ -137,13 +138,12 @@ async function loadDetail() {
   message.text = ''
 
   try {
-    const detail = await fetchSection(route.params.sectionId)
+    const detail = await withPageLoading(async () => fetchSection(route.params.sectionId))
     section.value = detail
 
-    const [roundList, enrollmentList] = await Promise.all([
-      fetchRounds({ termId: detail.term }),
-      fetchMyEnrollments({ termId: detail.term }),
-    ])
+    const [roundList, enrollmentList] = await withPageLoading(async () =>
+      Promise.all([fetchRounds({ termId: detail.term }), fetchMyEnrollments({ termId: detail.term })]),
+    )
 
     rounds.value = roundList
     myEnrollments.value = enrollmentList

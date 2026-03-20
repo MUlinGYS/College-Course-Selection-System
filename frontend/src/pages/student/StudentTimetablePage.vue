@@ -12,7 +12,7 @@
             <option value="">全部学期</option>
             <option v-for="term in terms" :key="term.id" :value="String(term.id)">{{ term.name }}</option>
           </select>
-          <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '刷新' }}</button>
+          <button class="primary-btn" :disabled="loading" type="submit">刷新</button>
         </form>
       </div>
 
@@ -56,6 +56,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 
 import { fetchMyTimetable, fetchTerms } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayOptions } from '../../utils/formatters'
 
 const terms = ref([])
@@ -84,7 +85,9 @@ const groupedByDay = computed(() =>
 )
 
 async function loadTermsOnly() {
-  terms.value = await fetchTerms()
+  await withPageLoading(async () => {
+    terms.value = await fetchTerms()
+  })
 }
 
 async function loadTimetable() {

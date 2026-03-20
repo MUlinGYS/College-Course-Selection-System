@@ -19,7 +19,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '应用筛选' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">应用筛选</button>
             <button class="ghost-btn" type="button" @click="resetFilter">重置</button>
           </div>
         </form>
@@ -114,6 +114,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 
 import { deleteEnrollment, fetchMyEnrollments, fetchTerms } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayLabel } from '../../utils/formatters'
 
 const terms = ref([])
@@ -141,7 +142,9 @@ async function loadEnrollments() {
   message.text = ''
 
   try {
-    enrollments.value = await fetchMyEnrollments({ termId: termId.value })
+    await withPageLoading(async () => {
+      enrollments.value = await fetchMyEnrollments({ termId: termId.value })
+    })
   } catch (error) {
     message.text = error.message || '加载我的已选失败。'
     message.type = 'error'

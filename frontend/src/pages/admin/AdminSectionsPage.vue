@@ -44,7 +44,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '应用' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">应用</button>
             <button class="ghost-btn" type="button" @click="resetFilters">重置</button>
           </div>
         </form>
@@ -200,6 +200,7 @@ import {
   fetchUsers,
   updateSection,
 } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { joinSectionSchedule, weekdayOptions } from '../../utils/formatters'
 
 const terms = ref([])
@@ -260,11 +261,9 @@ function assignForm(payload) {
 }
 
 async function loadBaseData() {
-  const [termList, courseList, teacherList] = await Promise.all([
-    fetchTerms(),
-    fetchCourses(),
-    fetchUsers({ role: 'teacher' }),
-  ])
+  const [termList, courseList, teacherList] = await withPageLoading(async () =>
+    Promise.all([fetchTerms(), fetchCourses(), fetchUsers({ role: 'teacher' })]),
+  )
 
   terms.value = termList
   courses.value = courseList
@@ -275,7 +274,9 @@ async function loadSections() {
   loading.value = true
 
   try {
-    sections.value = await fetchSections(filters)
+    await withPageLoading(async () => {
+      sections.value = await fetchSections(filters)
+    })
   } catch (error) {
     message.text = error.message || '加载班级列表失败。'
     message.type = 'error'

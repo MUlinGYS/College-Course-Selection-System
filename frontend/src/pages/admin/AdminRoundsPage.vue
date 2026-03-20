@@ -19,7 +19,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '应用' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">应用</button>
             <button class="ghost-btn" type="button" @click="resetFilters">重置</button>
           </div>
         </form>
@@ -153,6 +153,7 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import { createRound, fetchRounds, fetchTerms, updateRound } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, roundScopeOptions, toDateTimeLocal, toIsoDateTime } from '../../utils/formatters'
 
 const terms = ref([])
@@ -209,14 +210,18 @@ function roundScopeLabel(value) {
 }
 
 async function loadBaseData() {
-  terms.value = await fetchTerms()
+  await withPageLoading(async () => {
+    terms.value = await fetchTerms()
+  })
 }
 
 async function loadRounds() {
   loading.value = true
 
   try {
-    rounds.value = await fetchRounds({ termId: filters.termId })
+    await withPageLoading(async () => {
+      rounds.value = await fetchRounds({ termId: filters.termId })
+    })
   } catch (error) {
     message.text = error.message || '加载轮次列表失败。'
     message.type = 'error'

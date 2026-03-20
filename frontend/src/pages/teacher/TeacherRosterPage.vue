@@ -92,6 +92,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { fetchTeacherRoster, fetchTeacherSections } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { enrollmentStatusLabel, formatDateTime, formatTime, weekdayLabel } from '../../utils/formatters'
 
 const route = useRoute()
@@ -119,10 +120,9 @@ async function loadRoster() {
   message.text = ''
 
   try {
-    const [sectionList, rosterList] = await Promise.all([
-      fetchTeacherSections(),
-      fetchTeacherRoster(route.params.sectionId),
-    ])
+    const [sectionList, rosterList] = await withPageLoading(async () =>
+      Promise.all([fetchTeacherSections(), fetchTeacherRoster(route.params.sectionId)]),
+    )
 
     section.value = sectionList.find((item) => item.id === Number(route.params.sectionId)) || {}
     roster.value = rosterList

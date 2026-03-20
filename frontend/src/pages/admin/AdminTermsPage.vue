@@ -61,9 +61,7 @@
           <p class="eyebrow">学期目录</p>
           <h3>已配置学期</h3>
         </div>
-        <button class="ghost-btn" :disabled="loading" type="button" @click="loadTerms">
-          {{ loading ? '刷新中...' : '刷新' }}
-        </button>
+        <button class="ghost-btn" :disabled="loading" type="button" @click="loadTerms">刷新</button>
       </div>
 
       <div class="table-wrap">
@@ -103,6 +101,7 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import { createTerm, fetchTerms, updateTerm } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatDate, formatDateTime } from '../../utils/formatters'
 
 const terms = ref([])
@@ -146,7 +145,9 @@ async function loadTerms() {
   loading.value = true
 
   try {
-    terms.value = await fetchTerms()
+    await withPageLoading(async () => {
+      terms.value = await fetchTerms()
+    })
   } catch (error) {
     message.text = error.message || '加载学期列表失败。'
     message.type = 'error'

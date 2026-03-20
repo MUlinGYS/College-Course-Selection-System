@@ -1,23 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import AppLayout from '../components/AppLayout.vue'
-import AdminCoursesPage from '../pages/admin/AdminCoursesPage.vue'
-import AdminEnrollmentsPage from '../pages/admin/AdminEnrollmentsPage.vue'
-import AdminRoundsPage from '../pages/admin/AdminRoundsPage.vue'
-import AdminSectionsPage from '../pages/admin/AdminSectionsPage.vue'
-import AdminTermsPage from '../pages/admin/AdminTermsPage.vue'
-import AdminUsersPage from '../pages/admin/AdminUsersPage.vue'
-import LoginPage from '../pages/public/LoginPage.vue'
-import NotFoundPage from '../pages/public/NotFoundPage.vue'
-import ProfilePage from '../pages/public/ProfilePage.vue'
-import StudentConflictsPage from '../pages/student/StudentConflictsPage.vue'
-import StudentCourseDetailPage from '../pages/student/StudentCourseDetailPage.vue'
-import StudentCoursesPage from '../pages/student/StudentCoursesPage.vue'
-import StudentSelectedPage from '../pages/student/StudentSelectedPage.vue'
-import StudentTimetablePage from '../pages/student/StudentTimetablePage.vue'
-import TeacherRosterPage from '../pages/teacher/TeacherRosterPage.vue'
-import TeacherSectionsPage from '../pages/teacher/TeacherSectionsPage.vue'
 import { authState, getDefaultRoute, initializeAuth } from '../services/auth'
+import { finishRouteLoading, startRouteLoading } from '../services/pageLoading'
+
+const AppLayout = () => import('../components/AppLayout.vue')
+const LoginPage = () => import('../pages/public/LoginPage.vue')
+const NotFoundPage = () => import('../pages/public/NotFoundPage.vue')
+const ProfilePage = () => import('../pages/public/ProfilePage.vue')
+const AdminUsersPage = () => import('../pages/admin/AdminUsersPage.vue')
+const AdminTermsPage = () => import('../pages/admin/AdminTermsPage.vue')
+const AdminRoundsPage = () => import('../pages/admin/AdminRoundsPage.vue')
+const AdminCoursesPage = () => import('../pages/admin/AdminCoursesPage.vue')
+const AdminSectionsPage = () => import('../pages/admin/AdminSectionsPage.vue')
+const AdminEnrollmentsPage = () => import('../pages/admin/AdminEnrollmentsPage.vue')
+const StudentCoursesPage = () => import('../pages/student/StudentCoursesPage.vue')
+const StudentCourseDetailPage = () => import('../pages/student/StudentCourseDetailPage.vue')
+const StudentSelectedPage = () => import('../pages/student/StudentSelectedPage.vue')
+const StudentConflictsPage = () => import('../pages/student/StudentConflictsPage.vue')
+const StudentTimetablePage = () => import('../pages/student/StudentTimetablePage.vue')
+const TeacherSectionsPage = () => import('../pages/teacher/TeacherSectionsPage.vue')
+const TeacherRosterPage = () => import('../pages/teacher/TeacherRosterPage.vue')
 
 const routes = [
   {
@@ -61,6 +63,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  startRouteLoading()
   await initializeAuth()
 
   if (to.meta.public) {
@@ -86,6 +89,13 @@ router.beforeEach(async (to) => {
 
 router.afterEach((to) => {
   document.title = to.meta.title ? `${to.meta.title} | 校园选课系统` : '校园选课系统'
+  window.setTimeout(() => {
+    finishRouteLoading()
+  }, 0)
+})
+
+router.onError(() => {
+  finishRouteLoading()
 })
 
 export default router

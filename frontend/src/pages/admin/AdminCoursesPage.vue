@@ -16,7 +16,7 @@
           </label>
 
           <div class="toolbar">
-            <button class="primary-btn" :disabled="loading" type="submit">{{ loading ? '加载中...' : '查询' }}</button>
+            <button class="primary-btn" :disabled="loading" type="submit">查询</button>
             <button class="ghost-btn" type="button" @click="resetFilters">重置</button>
           </div>
         </form>
@@ -116,6 +116,7 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import { createCourse, deleteCourse, fetchCourses, updateCourse } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime } from '../../utils/formatters'
 
 const courses = ref([])
@@ -164,7 +165,9 @@ async function loadCourses() {
   loading.value = true
 
   try {
-    courses.value = await fetchCourses(filters)
+    await withPageLoading(async () => {
+      courses.value = await fetchCourses(filters)
+    })
   } catch (error) {
     message.text = error.message || '加载课程列表失败。'
     message.type = 'error'

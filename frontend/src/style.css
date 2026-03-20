@@ -25,6 +25,7 @@ body,
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
 }
 
 body,
@@ -90,14 +91,19 @@ p {
 }
 
 .layout-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  --sidebar-width: 320px;
+  --topbar-height: 106px;
 }
 
 .layout-sidebar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
   min-height: 100vh;
   padding: 32px 24px;
   background:
@@ -105,21 +111,17 @@ p {
     linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
   color: #eaf3ff;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
 }
 
 .brand-block {
-  padding: 8px 6px 28px;
+  padding: 8px 6px 24px;
 }
 
 .brand-block h1 {
-  margin-top: 4px;
   font-size: 1.8rem;
   line-height: 1.15;
-}
-
-.sidebar-copy {
-  margin-top: 14px;
-  color: rgba(234, 243, 255, 0.74);
+  color: #ffffff;
 }
 
 .nav-groups {
@@ -158,16 +160,83 @@ p {
 }
 
 .layout-main {
+  height: 100vh;
   min-width: 0;
-  padding: 28px;
+  margin-left: var(--sidebar-width);
+  overflow: hidden;
+}
+
+.layout-content {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: calc(var(--topbar-height) + 28px) 28px 28px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.layout-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.layout-content .el-loading-mask.route-loading-mask {
+  border-radius: 24px 24px 0 0;
+  z-index: 12;
+}
+
+.layout-content .route-loading-mask .el-loading-spinner {
+  margin-top: -24px;
+}
+
+.layout-content .route-loading-mask .el-loading-text {
+  margin-top: 10px;
+  color: #1e5fae;
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.page-shell-loading {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .layout-topbar {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  z-index: 20;
+}
+
+.topbar-surface {
+  min-height: 88px;
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  align-items: flex-start;
-  margin-bottom: 22px;
+  align-items: center;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(23, 42, 68, 0.08);
+  box-shadow: 0 18px 40px rgba(26, 43, 68, 0.1);
+}
+
+.topbar-heading {
+  min-width: 0;
+}
+
+.topbar-heading h2 {
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.topbar-subtitle {
+  margin-top: 6px;
+  color: #6b7d92;
+  font-size: 0.94rem;
 }
 
 .page-shell,
@@ -321,6 +390,7 @@ p {
   display: flex;
   gap: 14px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .form-grid,
@@ -400,6 +470,10 @@ label {
   text-decoration: none;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.topbar-logout {
+  min-width: 112px;
 }
 
 .primary-btn {
@@ -644,7 +718,11 @@ tbody tr:hover {
 
 @media (max-width: 1200px) {
   .layout-shell {
-    grid-template-columns: 280px minmax(0, 1fr);
+    --sidebar-width: 280px;
+  }
+
+  .layout-sidebar {
+    width: var(--sidebar-width);
   }
 
   .stats-strip,
@@ -663,22 +741,50 @@ tbody tr:hover {
   }
 
   .layout-shell {
-    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .layout-sidebar {
     position: static;
+    left: auto;
+    width: auto;
+    height: auto;
     min-height: auto;
+    overflow-y: visible;
   }
 
   .layout-main {
+    height: auto;
+    margin-left: 0;
+    overflow: visible;
+  }
+
+  .layout-topbar {
+    position: static;
+    padding: 18px 18px 0;
+  }
+
+  .layout-content {
+    height: auto;
+    overflow: visible;
+    padding: 18px;
+  }
+
+  .topbar-surface {
+    min-height: auto;
     padding: 18px;
   }
 
   .layout-topbar,
-  .panel-head,
   .topbar-actions,
   .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-head {
     flex-direction: column;
     align-items: stretch;
   }

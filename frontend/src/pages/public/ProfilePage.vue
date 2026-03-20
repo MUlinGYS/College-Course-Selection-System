@@ -6,9 +6,7 @@
           <p class="eyebrow">当前用户</p>
           <h3>个人信息概览</h3>
         </div>
-        <button class="ghost-btn" :disabled="loading" type="button" @click="loadProfile">
-          {{ loading ? '刷新中...' : '刷新' }}
-        </button>
+        <button class="ghost-btn" :disabled="loading" type="button" @click="loadProfile">刷新</button>
       </div>
 
       <div class="detail-grid">
@@ -142,6 +140,7 @@ import { useRouter } from 'vue-router'
 
 import { authState, refreshCurrentUser, signOut } from '../../services/auth'
 import { changeMyPassword, updateMyProfile } from '../../services/api'
+import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, roleLabel } from '../../utils/formatters'
 
 const router = useRouter()
@@ -196,7 +195,9 @@ async function loadProfile() {
   message.text = ''
 
   try {
-    await refreshCurrentUser()
+    await withPageLoading(async () => {
+      await refreshCurrentUser()
+    })
     message.text = '已从后端刷新个人信息。'
     message.type = 'success'
   } catch (error) {
