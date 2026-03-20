@@ -17,10 +17,6 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-# Python virtual environments
-.venv/
-venv/
-env/
 
 # Django / logs
 *.log
