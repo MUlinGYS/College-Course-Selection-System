@@ -593,6 +593,12 @@ label {
   overflow-x: auto;
 }
 
+.pagination-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
 table {
   width: 100%;
   min-width: 980px;

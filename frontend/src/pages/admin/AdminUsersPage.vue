@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadUsers">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             搜索
             <input v-model.trim="filters.q" placeholder="用户名、邮箱、姓名、学号工号、部门" />
@@ -116,7 +116,7 @@
           <p class="eyebrow">用户目录</p>
           <h3>用户列表</h3>
         </div>
-        <span class="badge badge-neutral">{{ users.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -159,6 +159,20 @@
           </tbody>
         </table>
       </div>
+
+      <div class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
+        />
+      </div>
     </article>
   </section>
 </template>
@@ -174,6 +188,9 @@ const users = ref([])
 const loading = ref(false)
 const submitting = ref(false)
 const editingId = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const filters = reactive({
   role: '',
@@ -225,7 +242,14 @@ async function loadUsers() {
 
   try {
     await withPageLoading(async () => {
-      users.value = await fetchUsers(filters)
+      const response = await fetchUsers({
+        ...filters,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      users.value = response.results || []
+      total.value = Number(response.count || 0)
     })
   } catch (error) {
     message.text = error.message || '加载用户列表失败。'
@@ -235,9 +259,26 @@ async function loadUsers() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadUsers()
+}
+
 function resetFilters() {
   filters.role = ''
   filters.q = ''
+  currentPage.value = 1
+  loadUsers()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  loadUsers()
+}
+
+function handlePageSizeChange(size) {
+  pageSize.value = size
+  currentPage.value = 1
   loadUsers()
 }
 
@@ -352,6 +393,9 @@ async function removeUser(user) {
     await deleteUser(user.id)
     if (editingId.value === user.id) {
       resetForm()
+    }
+    if (users.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
     }
     message.text = '用户删除成功。'
     message.type = 'success'

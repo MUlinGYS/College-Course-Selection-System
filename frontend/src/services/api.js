@@ -155,10 +155,13 @@ export function changeMyPassword(payload) {
   return apiPost('/me/password', payload)
 }
 
-export function fetchUsers({ role = '', q = '' } = {}) {
+export function fetchUsers({ role = '', q = '', page = '', pageSize = '', paginate = false } = {}) {
   const params = new URLSearchParams()
   if (role) params.set('role', role)
   if (q) params.set('q', q)
+  if (paginate) params.set('paginate', '1')
+  if (page) params.set('page', String(page))
+  if (pageSize) params.set('page_size', String(pageSize))
   const query = params.toString()
   return apiGet(`/users${query ? `?${query}` : ''}`)
 }
