@@ -22,7 +22,7 @@ class CourseListCreateView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Course.objects.all().order_by("-id")
+        queryset = Course.objects.all().order_by("id")
         keyword = request.query_params.get("q")
 
         if keyword:
@@ -76,7 +76,7 @@ class SectionListCreateView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Section.objects.select_related("term", "course", "teacher", "teacher__profile").all().order_by("-id")
+        queryset = Section.objects.select_related("term", "course", "teacher", "teacher__profile").all().order_by("id")
         term_id = request.query_params.get("term_id")
         course_id = request.query_params.get("course_id")
         teacher_id = request.query_params.get("teacher_id")

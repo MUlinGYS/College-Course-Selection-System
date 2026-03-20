@@ -21,7 +21,7 @@ class TermListCreateView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Term.objects.all().order_by("-id")
+        queryset = Term.objects.all().order_by("id")
         serializer = TermSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -62,7 +62,7 @@ class RoundListCreateView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Round.objects.select_related("term").all().order_by("-id")
+        queryset = Round.objects.select_related("term").all().order_by("id")
         term_id = request.query_params.get("term_id")
 
         if term_id:

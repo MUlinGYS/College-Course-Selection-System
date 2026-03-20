@@ -87,6 +87,7 @@ class EnrollmentCollectionView(StudentGuardMixin, AdminGuardMixin, APIView):
         if status_value:
             queryset = queryset.filter(status=status_value)
 
+        queryset = queryset.order_by("id")
         return Response(EnrollmentSerializer(queryset, many=True).data)
 
     def post(self, request):
@@ -251,6 +252,7 @@ class MyEnrollmentListView(StudentGuardMixin, APIView):
         if term_id:
             queryset = queryset.filter(section__term_id=term_id)
 
+        queryset = queryset.order_by("id")
         return Response(EnrollmentSerializer(queryset, many=True).data)
 
 
@@ -408,7 +410,7 @@ class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
                 "end_time": section.end_time,
                 "location": section.location,
             }
-            for section in queryset.order_by("-id")
+            for section in queryset.order_by("id")
         ]
         return Response(data)
 
@@ -442,5 +444,5 @@ class TeacherRosterView(TeacherOrAdminGuardMixin, APIView):
         ).filter(
             section=section,
             status=Enrollment.STATUS_ENROLLED,
-        )
+        ).order_by("id")
         return Response(EnrollmentSerializer(queryset, many=True).data)
