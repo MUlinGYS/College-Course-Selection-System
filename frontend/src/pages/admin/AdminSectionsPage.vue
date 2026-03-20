@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadSections">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
             <select v-model="filters.termId">
@@ -139,13 +139,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">班级目录</p>
           <h3>已配置开课班级</h3>
         </div>
-        <span class="badge badge-neutral">{{ sections.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -184,13 +184,26 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
 import {
   createSection,
   deleteSection,
@@ -198,6 +211,7 @@ import {
   fetchSections,
   fetchTerms,
   fetchUsers,
+  normalizeListResponse,
   updateSection,
 } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
@@ -210,6 +224,9 @@ const sections = ref([])
 const loading = ref(false)
 const submitting = ref(false)
 const editingId = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const filters = reactive({
   termId: '',
@@ -275,7 +292,15 @@ async function loadSections() {
 
   try {
     await withPageLoading(async () => {
-      sections.value = await fetchSections(filters)
+      const response = await fetchSections({
+        ...filters,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      sections.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载班级列表失败。'
@@ -285,11 +310,22 @@ async function loadSections() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadSections()
+}
+
 function resetFilters() {
   filters.termId = ''
   filters.courseId = ''
   filters.teacherId = ''
   filters.q = ''
+  currentPage.value = 1
+  loadSections()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadSections()
 }
 
@@ -387,6 +423,7 @@ async function submitForm() {
       message.text = '班级更新成功。'
     } else {
       await createSection(buildPayload())
+      currentPage.value = Math.max(1, Math.ceil((total.value + 1) / pageSize.value))
       message.text = '班级创建成功。'
     }
 
@@ -409,6 +446,9 @@ async function removeSection(section) {
     await deleteSection(section.id)
     if (editingId.value === section.id) {
       resetForm()
+    }
+    if (sections.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
     }
     message.text = '班级删除成功。'
     message.type = 'success'

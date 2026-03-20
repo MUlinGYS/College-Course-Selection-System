@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadCourses">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             搜索
             <input v-model.trim="filters.q" placeholder="课程编号或课程名称" />
@@ -67,13 +67,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">课程目录</p>
           <h3>已配置课程</h3>
         </div>
-        <span class="badge badge-neutral">{{ courses.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -108,14 +108,27 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 
-import { createCourse, deleteCourse, fetchCourses, updateCourse } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { createCourse, deleteCourse, fetchCourses, normalizeListResponse, updateCourse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime } from '../../utils/formatters'
 
@@ -123,6 +136,9 @@ const courses = ref([])
 const loading = ref(false)
 const submitting = ref(false)
 const editingId = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const filters = reactive({
   q: '',
@@ -166,7 +182,15 @@ async function loadCourses() {
 
   try {
     await withPageLoading(async () => {
-      courses.value = await fetchCourses(filters)
+      const response = await fetchCourses({
+        ...filters,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      courses.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载课程列表失败。'
@@ -176,8 +200,19 @@ async function loadCourses() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadCourses()
+}
+
 function resetFilters() {
   filters.q = ''
+  currentPage.value = 1
+  loadCourses()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadCourses()
 }
 
@@ -243,6 +278,7 @@ async function submitForm() {
       message.text = '课程更新成功。'
     } else {
       await createCourse(payload)
+      currentPage.value = Math.max(1, Math.ceil((total.value + 1) / pageSize.value))
       message.text = '课程创建成功。'
     }
 
@@ -265,6 +301,9 @@ async function removeCourse(course) {
     await deleteCourse(course.id)
     if (editingId.value === course.id) {
       resetForm()
+    }
+    if (courses.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
     }
     message.text = '课程删除成功。'
     message.type = 'success'

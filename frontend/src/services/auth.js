@@ -1,6 +1,6 @@
 import { computed, reactive } from 'vue'
 
-import { clearAuthTokens, fetchCurrentUser, getAccessToken, login, logout } from './api'
+import { clearAuthTokens, fetchCurrentUser, getAccessToken, getRefreshToken, login, logout, refreshAccessToken } from './api'
 
 export const authState = reactive({
   initialized: false,
@@ -16,12 +16,15 @@ export function getDefaultRoute(role) {
 export async function initializeAuth() {
   if (authState.initialized) return
 
-  if (!getAccessToken()) {
+  if (!getAccessToken() && !getRefreshToken()) {
     authState.initialized = true
     return
   }
 
   try {
+    if (!getAccessToken() && getRefreshToken()) {
+      await refreshAccessToken()
+    }
     authState.currentUser = await fetchCurrentUser()
   } catch {
     clearAuthTokens()

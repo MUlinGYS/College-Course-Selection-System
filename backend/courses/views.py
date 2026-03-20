@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin
 from .models import Course, Section
 from .serializers import CourseSerializer, SectionSerializer
@@ -27,6 +28,11 @@ class CourseListCreateView(AdminWriteGuardMixin, APIView):
 
         if keyword:
             queryset = queryset.filter(Q(name__icontains=keyword) | Q(code__icontains=keyword))
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(CourseSerializer(page, many=True).data)
 
         return Response(CourseSerializer(queryset, many=True).data)
 
@@ -97,6 +103,11 @@ class SectionListCreateView(AdminWriteGuardMixin, APIView):
                 | Q(teacher__username__icontains=keyword)
                 | Q(teacher__profile__real_name__icontains=keyword)
             )
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(SectionSerializer(page, many=True).data)
 
         return Response(SectionSerializer(queryset, many=True).data)
 

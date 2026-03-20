@@ -110,7 +110,7 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">用户目录</p>
@@ -160,27 +160,26 @@
         </table>
       </div>
 
-      <div class="pagination-wrap">
+      <div v-if="total > pageSize" class="pagination-wrap">
         <el-pagination
           :current-page="currentPage"
           :disabled="loading"
           :page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
           :total="total"
           background
-          layout="total, sizes, prev, pager, next, jumper"
+          layout="total, prev, pager, next, jumper"
           @current-change="handlePageChange"
-          @size-change="handlePageSizeChange"
         />
       </div>
-    </article>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 
-import { createUser, deleteUser, fetchUsers, updateUser } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { createUser, deleteUser, fetchUsers, normalizeListResponse, updateUser } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, roleLabel, roleOptions } from '../../utils/formatters'
 
@@ -248,8 +247,9 @@ async function loadUsers() {
         page: currentPage.value,
         pageSize: pageSize.value,
       })
-      users.value = response.results || []
-      total.value = Number(response.count || 0)
+      const { results, count } = normalizeListResponse(response)
+      users.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载用户列表失败。'
@@ -273,12 +273,6 @@ function resetFilters() {
 
 function handlePageChange(page) {
   currentPage.value = page
-  loadUsers()
-}
-
-function handlePageSizeChange(size) {
-  pageSize.value = size
-  currentPage.value = 1
   loadUsers()
 }
 
@@ -369,6 +363,7 @@ async function submitForm() {
       message.text = '用户更新成功。'
     } else {
       await createUser(buildPayload())
+      currentPage.value = Math.max(1, Math.ceil((total.value + 1) / pageSize.value))
       message.text = '用户创建成功。'
     }
 

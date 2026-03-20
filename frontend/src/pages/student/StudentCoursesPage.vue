@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadPageData">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
             <select v-model="filters.termId">
@@ -57,7 +57,7 @@
         <div class="stats-strip">
           <div class="stat-box">
             <span class="stat-label">班级数量</span>
-            <strong>{{ sections.length }}</strong>
+            <strong>{{ total }}</strong>
           </div>
           <div class="stat-box">
             <span class="stat-label">我的已选</span>
@@ -76,13 +76,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">课程目录</p>
           <h3>可浏览班级列表</h3>
         </div>
-        <span class="badge badge-neutral">{{ sections.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -133,7 +133,19 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
@@ -141,7 +153,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { createEnrollment, fetchMyEnrollments, fetchRounds, fetchSections, fetchTerms } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { createEnrollment, fetchMyEnrollments, fetchRounds, fetchSections, fetchTerms, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, joinSectionSchedule, roundScopeOptions } from '../../utils/formatters'
 
@@ -152,6 +165,9 @@ const myEnrollments = ref([])
 const loading = ref(false)
 const enrollingId = ref(null)
 const selectedRoundId = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const filters = reactive({
   termId: '',
@@ -242,12 +258,20 @@ async function loadPageData() {
     await withPageLoading(async () => {
       const [roundList, sectionList, enrollmentList] = await Promise.all([
         fetchRounds({ termId: filters.termId }),
-        fetchSections({ termId: filters.termId, q: filters.q }),
+        fetchSections({
+          termId: filters.termId,
+          q: filters.q,
+          paginate: true,
+          page: currentPage.value,
+          pageSize: pageSize.value,
+        }),
         fetchMyEnrollments({ termId: filters.termId }),
       ])
 
       rounds.value = roundList
-      sections.value = sectionList
+      const { results, count } = normalizeListResponse(sectionList)
+      sections.value = results
+      total.value = count
       myEnrollments.value = enrollmentList
 
       if (!rounds.value.some((item) => String(item.id) === selectedRoundId.value)) {
@@ -263,9 +287,20 @@ async function loadPageData() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadPageData()
+}
+
 function resetFilters() {
   filters.q = ''
   filters.termId = ''
+  currentPage.value = 1
+  loadPageData()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadPageData()
 }
 

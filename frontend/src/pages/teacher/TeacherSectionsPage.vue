@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadSections">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
             <select v-model="termId">
@@ -38,7 +38,7 @@
         <div class="stats-strip">
           <div class="stat-box">
             <span class="stat-label">班级数</span>
-            <strong>{{ sections.length }}</strong>
+            <strong>{{ total }}</strong>
           </div>
           <div class="stat-box">
             <span class="stat-label">已选学生数</span>
@@ -57,13 +57,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">我的班级</p>
           <h3>授课班级列表</h3>
         </div>
-        <span class="badge badge-neutral">{{ sections.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -99,7 +99,19 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
@@ -107,7 +119,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { fetchTeacherSections, fetchTerms } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { fetchTeacherSections, fetchTerms, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayLabel } from '../../utils/formatters'
 
@@ -115,6 +128,9 @@ const terms = ref([])
 const sections = ref([])
 const loading = ref(false)
 const termId = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const message = reactive({
   text: '',
@@ -136,7 +152,15 @@ async function loadSections() {
 
   try {
     await withPageLoading(async () => {
-      sections.value = await fetchTeacherSections({ termId: termId.value })
+      const response = await fetchTeacherSections({
+        termId: termId.value,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      sections.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载教师班级失败。'
@@ -146,8 +170,19 @@ async function loadSections() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadSections()
+}
+
 function resetFilter() {
   termId.value = ''
+  currentPage.value = 1
+  loadSections()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadSections()
 }
 

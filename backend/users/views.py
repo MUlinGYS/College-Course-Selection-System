@@ -2,11 +2,11 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin
 from core.utils import ensure_user_profile
 from .serializers import (
@@ -17,25 +17,6 @@ from .serializers import (
     SelfProfileUpdateSerializer,
     UserSerializer,
 )
-
-
-class AdminUserPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "page_size"
-    max_page_size = 100
-
-    def get_paginated_response(self, data):
-        return Response(
-            {
-                "count": self.page.paginator.count,
-                "page": self.page.number,
-                "page_size": self.get_page_size(self.request),
-                "total_pages": self.page.paginator.num_pages,
-                "next": self.get_next_link(),
-                "previous": self.get_previous_link(),
-                "results": data,
-            }
-        )
 
 
 class LoginView(TokenObtainPairView):
@@ -85,7 +66,6 @@ class UserListCreateView(APIView):
         queryset = User.objects.select_related("profile").all().order_by("id")
         role = request.query_params.get("role")
         keyword = request.query_params.get("q")
-        paginate = request.query_params.get("paginate") == "1"
 
         if role:
             queryset = queryset.filter(profile__role=role)
@@ -100,8 +80,8 @@ class UserListCreateView(APIView):
                 | Q(profile__department__icontains=keyword)
             )
 
-        if paginate:
-            paginator = AdminUserPagination()
+        if should_paginate(request):
+            paginator = StandardPagination()
             page = paginator.paginate_queryset(queryset, request, view=self)
             return paginator.get_paginated_response(self._serialize_users(page))
 

@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadRounds">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
             <select v-model="filters.termId">
@@ -97,13 +97,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">轮次目录</p>
           <h3>已配置选课轮次</h3>
         </div>
-        <span class="badge badge-neutral">{{ rounds.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -145,14 +145,27 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 
-import { createRound, fetchRounds, fetchTerms, updateRound } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { createRound, fetchRounds, fetchTerms, normalizeListResponse, updateRound } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, roundScopeOptions, toDateTimeLocal, toIsoDateTime } from '../../utils/formatters'
 
@@ -161,6 +174,9 @@ const rounds = ref([])
 const loading = ref(false)
 const submitting = ref(false)
 const editingId = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const filters = reactive({
   termId: '',
@@ -220,7 +236,15 @@ async function loadRounds() {
 
   try {
     await withPageLoading(async () => {
-      rounds.value = await fetchRounds({ termId: filters.termId })
+      const response = await fetchRounds({
+        termId: filters.termId,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      rounds.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载轮次列表失败。'
@@ -230,8 +254,19 @@ async function loadRounds() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadRounds()
+}
+
 function resetFilters() {
   filters.termId = ''
+  currentPage.value = 1
+  loadRounds()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadRounds()
 }
 
@@ -323,6 +358,7 @@ async function submitForm() {
       message.text = '轮次更新成功。'
     } else {
       await createRound(buildPayload())
+      currentPage.value = Math.max(1, Math.ceil((total.value + 1) / pageSize.value))
       message.text = '轮次创建成功。'
     }
 

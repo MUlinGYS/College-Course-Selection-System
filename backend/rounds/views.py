@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin
 from .models import Round, Term
 from .serializers import RoundSerializer, TermSerializer
@@ -22,6 +23,12 @@ class TermListCreateView(AdminWriteGuardMixin, APIView):
 
     def get(self, request):
         queryset = Term.objects.all().order_by("id")
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(TermSerializer(page, many=True).data)
+
         serializer = TermSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -67,6 +74,11 @@ class RoundListCreateView(AdminWriteGuardMixin, APIView):
 
         if term_id:
             queryset = queryset.filter(term_id=term_id)
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(RoundSerializer(page, many=True).data)
 
         serializer = RoundSerializer(queryset, many=True)
         return Response(serializer.data)

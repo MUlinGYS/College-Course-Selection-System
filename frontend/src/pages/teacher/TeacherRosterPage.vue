@@ -37,7 +37,7 @@
           </div>
           <div class="detail-item">
             <span class="detail-label">已选人数</span>
-            <strong>{{ roster.length }}</strong>
+            <strong>{{ total }}</strong>
           </div>
         </div>
 
@@ -45,13 +45,13 @@
       </template>
     </article>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">名单</p>
           <h3>已选学生列表</h3>
         </div>
-        <span class="badge badge-neutral">{{ roster.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -83,7 +83,19 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
@@ -91,7 +103,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-import { fetchTeacherRoster, fetchTeacherSections } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { fetchTeacherRoster, fetchTeacherSections, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { enrollmentStatusLabel, formatDateTime, formatTime, weekdayLabel } from '../../utils/formatters'
 
@@ -100,6 +113,9 @@ const route = useRoute()
 const section = ref({})
 const roster = ref([])
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 const message = reactive({
   text: '',
   type: 'success',
@@ -121,17 +137,31 @@ async function loadRoster() {
 
   try {
     const [sectionList, rosterList] = await withPageLoading(async () =>
-      Promise.all([fetchTeacherSections(), fetchTeacherRoster(route.params.sectionId)]),
+      Promise.all([
+        fetchTeacherSections(),
+        fetchTeacherRoster(route.params.sectionId, {
+          paginate: true,
+          page: currentPage.value,
+          pageSize: pageSize.value,
+        }),
+      ]),
     )
 
     section.value = sectionList.find((item) => item.id === Number(route.params.sectionId)) || {}
-    roster.value = rosterList
+    const { results, count } = normalizeListResponse(rosterList)
+    roster.value = results
+    total.value = count
   } catch (error) {
     message.text = error.message || '加载名单失败。'
     message.type = 'error'
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  loadRoster()
 }
 
 onMounted(() => {

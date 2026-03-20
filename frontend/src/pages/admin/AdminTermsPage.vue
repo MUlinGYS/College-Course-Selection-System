@@ -55,7 +55,7 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">学期目录</p>
@@ -93,14 +93,27 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 
-import { createTerm, fetchTerms, updateTerm } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { createTerm, fetchTerms, normalizeListResponse, updateTerm } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatDate, formatDateTime } from '../../utils/formatters'
 
@@ -108,6 +121,9 @@ const terms = ref([])
 const loading = ref(false)
 const submitting = ref(false)
 const editingId = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const message = reactive({
   text: '',
@@ -146,7 +162,14 @@ async function loadTerms() {
 
   try {
     await withPageLoading(async () => {
-      terms.value = await fetchTerms()
+      const response = await fetchTerms({
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      terms.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载学期列表失败。'
@@ -154,6 +177,11 @@ async function loadTerms() {
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  loadTerms()
 }
 
 function startEdit(term) {
@@ -212,6 +240,7 @@ async function submitForm() {
       message.text = '学期更新成功。'
     } else {
       await createTerm(payload)
+      currentPage.value = Math.max(1, Math.ceil((total.value + 1) / pageSize.value))
       message.text = '学期创建成功。'
     }
 

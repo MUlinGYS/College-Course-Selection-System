@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin
 from core.redis_lock import RedisLockBusy, RedisLockUnavailable, guarded_redis_locks
 from core.utils import ensure_user_profile
@@ -88,6 +89,12 @@ class EnrollmentCollectionView(StudentGuardMixin, AdminGuardMixin, APIView):
             queryset = queryset.filter(status=status_value)
 
         queryset = queryset.order_by("id")
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(EnrollmentSerializer(page, many=True).data)
+
         return Response(EnrollmentSerializer(queryset, many=True).data)
 
     def post(self, request):
@@ -253,6 +260,12 @@ class MyEnrollmentListView(StudentGuardMixin, APIView):
             queryset = queryset.filter(section__term_id=term_id)
 
         queryset = queryset.order_by("id")
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(EnrollmentSerializer(page, many=True).data)
+
         return Response(EnrollmentSerializer(queryset, many=True).data)
 
 
@@ -370,6 +383,11 @@ class MyConflictListView(StudentGuardMixin, APIView):
                     }
                 )
 
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(conflicts, request, view=self)
+            return paginator.get_paginated_response(ConflictSerializer(page, many=True).data)
+
         return Response(ConflictSerializer(conflicts, many=True).data)
 
 
@@ -412,6 +430,12 @@ class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
             }
             for section in queryset.order_by("id")
         ]
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(data, request, view=self)
+            return paginator.get_paginated_response(page)
+
         return Response(data)
 
 
@@ -445,4 +469,10 @@ class TeacherRosterView(TeacherOrAdminGuardMixin, APIView):
             section=section,
             status=Enrollment.STATUS_ENROLLED,
         ).order_by("id")
+
+        if should_paginate(request):
+            paginator = StandardPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            return paginator.get_paginated_response(EnrollmentSerializer(page, many=True).data)
+
         return Response(EnrollmentSerializer(queryset, many=True).data)

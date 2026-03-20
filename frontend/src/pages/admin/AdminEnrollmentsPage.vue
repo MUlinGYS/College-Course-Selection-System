@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadEnrollments">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             轮次
             <select v-model="filters.roundId">
@@ -70,7 +70,7 @@
         <div class="stats-strip">
           <div class="stat-box">
             <span class="stat-label">记录总数</span>
-            <strong>{{ enrollments.length }}</strong>
+            <strong>{{ total }}</strong>
           </div>
           <div class="stat-box">
             <span class="stat-label">已选记录</span>
@@ -89,13 +89,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">选课记录目录</p>
           <h3>选课记录</h3>
         </div>
-        <span class="badge badge-neutral">{{ enrollments.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -137,14 +137,27 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 
-import { fetchEnrollmentRecords, fetchRounds, fetchSections, fetchUsers } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { fetchEnrollmentRecords, fetchRounds, fetchSections, fetchUsers, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import {
   enrollmentStatusLabel,
@@ -159,6 +172,9 @@ const sections = ref([])
 const students = ref([])
 const enrollments = ref([])
 const loading = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const filters = reactive({
   roundId: '',
@@ -191,7 +207,15 @@ async function loadEnrollments() {
 
   try {
     await withPageLoading(async () => {
-      enrollments.value = await fetchEnrollmentRecords(filters)
+      const response = await fetchEnrollmentRecords({
+        ...filters,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      enrollments.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载选课记录失败。'
@@ -201,11 +225,22 @@ async function loadEnrollments() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadEnrollments()
+}
+
 function resetFilters() {
   filters.roundId = ''
   filters.sectionId = ''
   filters.studentId = ''
   filters.status = ''
+  currentPage.value = 1
+  loadEnrollments()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadEnrollments()
 }
 

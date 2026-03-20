@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadEnrollments">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
             <select v-model="termId">
@@ -38,7 +38,7 @@
         <div class="stats-strip">
           <div class="stat-box">
             <span class="stat-label">已选课程数</span>
-            <strong>{{ enrollments.length }}</strong>
+            <strong>{{ total }}</strong>
           </div>
           <div class="stat-box">
             <span class="stat-label">筛选学期</span>
@@ -57,13 +57,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">我的已选</p>
           <h3>当前已选课程</h3>
         </div>
-        <span class="badge badge-neutral">{{ enrollments.length }} 条记录</span>
+        <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
 
       <div class="table-wrap">
@@ -106,14 +106,27 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 
-import { deleteEnrollment, fetchMyEnrollments, fetchTerms } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { deleteEnrollment, fetchMyEnrollments, fetchTerms, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayLabel } from '../../utils/formatters'
 
@@ -122,6 +135,9 @@ const enrollments = ref([])
 const loading = ref(false)
 const droppingId = ref(null)
 const termId = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const message = reactive({
   text: '',
@@ -143,7 +159,15 @@ async function loadEnrollments() {
 
   try {
     await withPageLoading(async () => {
-      enrollments.value = await fetchMyEnrollments({ termId: termId.value })
+      const response = await fetchMyEnrollments({
+        termId: termId.value,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      enrollments.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载我的已选失败。'
@@ -153,8 +177,19 @@ async function loadEnrollments() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadEnrollments()
+}
+
 function resetFilter() {
   termId.value = ''
+  currentPage.value = 1
+  loadEnrollments()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadEnrollments()
 }
 
@@ -166,6 +201,9 @@ async function dropEnrollment(item) {
 
   try {
     await deleteEnrollment(item.id)
+    if (enrollments.value.length === 1 && currentPage.value > 1) {
+      currentPage.value -= 1
+    }
     await loadEnrollments()
     message.text = '退课成功。'
     message.type = 'success'

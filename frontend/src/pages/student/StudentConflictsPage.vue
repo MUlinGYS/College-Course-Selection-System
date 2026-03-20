@@ -9,7 +9,7 @@
           </div>
         </div>
 
-        <form class="filter-grid" @submit.prevent="loadConflicts">
+        <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
             <select v-model="termId">
@@ -38,7 +38,7 @@
         <div class="stats-strip">
           <div class="stat-box">
             <span class="stat-label">冲突对数量</span>
-            <strong>{{ conflicts.length }}</strong>
+            <strong>{{ total }}</strong>
           </div>
           <div class="stat-box">
             <span class="stat-label">筛选学期</span>
@@ -57,13 +57,13 @@
       </article>
     </div>
 
-    <article class="panel-card table-panel">
+    <ExpandablePanel panel-class="table-panel">
       <div class="panel-head">
         <div>
           <p class="eyebrow">冲突明细</p>
           <h3>已选课程时间冲突列表</h3>
         </div>
-        <span :class="['badge', conflicts.length ? 'badge-off' : 'badge-on']">{{ conflicts.length }} 组</span>
+        <span :class="['badge', total ? 'badge-off' : 'badge-on']">{{ total }} 组</span>
       </div>
 
       <div class="table-wrap">
@@ -103,14 +103,27 @@
           </tbody>
         </table>
       </div>
-    </article>
+
+      <div v-if="total > pageSize" class="pagination-wrap">
+        <el-pagination
+          :current-page="currentPage"
+          :disabled="loading"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="total, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </ExpandablePanel>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 
-import { fetchMyConflicts, fetchTerms } from '../../services/api'
+import ExpandablePanel from '../../components/ExpandablePanel.vue'
+import { fetchMyConflicts, fetchTerms, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayLabel } from '../../utils/formatters'
 
@@ -118,6 +131,9 @@ const terms = ref([])
 const conflicts = ref([])
 const loading = ref(false)
 const termId = ref('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const message = reactive({
   text: '',
@@ -141,9 +157,17 @@ async function loadConflicts() {
 
   try {
     await withPageLoading(async () => {
-      conflicts.value = await fetchMyConflicts({ termId: termId.value })
+      const response = await fetchMyConflicts({
+        termId: termId.value,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+      const { results, count } = normalizeListResponse(response)
+      conflicts.value = results
+      total.value = count
     })
-    message.text = conflicts.value.length ? '已完成冲突检查。' : '未检测到时间冲突。'
+    message.text = total.value ? '已完成冲突检查。' : '未检测到时间冲突。'
     message.type = 'success'
   } catch (error) {
     message.text = error.message || '加载冲突信息失败。'
@@ -153,8 +177,19 @@ async function loadConflicts() {
   }
 }
 
+async function handleSearch() {
+  currentPage.value = 1
+  await loadConflicts()
+}
+
 function resetFilter() {
   termId.value = ''
+  currentPage.value = 1
+  loadConflicts()
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
   loadConflicts()
 }
 
