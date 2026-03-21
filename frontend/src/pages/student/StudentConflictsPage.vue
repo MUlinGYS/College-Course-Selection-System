@@ -49,11 +49,6 @@
             <strong>{{ conflicts.length ? '发现冲突' : '无冲突' }}</strong>
           </div>
         </div>
-
-        <div class="placeholder-state">
-          <strong>本页检查的是“已选课程之间”的时间重叠。</strong>
-          <p>如果列表为空，说明当前筛选学期下没有检测到已选课程冲突。选课提交时的实时拦截仍以后端校验结果为准。</p>
-        </div>
       </article>
     </div>
 
@@ -203,3 +198,4 @@ onMounted(async () => {
   }
 })
 </script>
+

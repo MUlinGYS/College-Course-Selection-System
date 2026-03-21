@@ -49,11 +49,6 @@
             <strong>{{ totalCapacity }}</strong>
           </div>
         </div>
-
-        <div class="placeholder-state">
-          <strong>本页用于查看你负责授课的班级。</strong>
-          <p>点击“名单”可进入班级名单页，查看已选学生和对应选课轮次。</p>
-        </div>
       </article>
     </div>
 
@@ -196,3 +191,4 @@ onMounted(async () => {
   }
 })
 </script>
+

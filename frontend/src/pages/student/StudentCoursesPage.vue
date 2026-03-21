@@ -12,7 +12,7 @@
         <form class="filter-grid" @submit.prevent="handleSearch">
           <label>
             学期
-            <select v-model="filters.termId">
+            <select v-model="draftFilters.termId">
               <option value="">全部学期</option>
               <option v-for="term in terms" :key="term.id" :value="String(term.id)">{{ term.name }}</option>
             </select>
@@ -20,14 +20,14 @@
 
           <label>
             关键字
-            <input v-model.trim="filters.q" placeholder="课程、班级、教师、地点" />
+            <input v-model.trim="draftFilters.q" placeholder="课程、班级、教师、地点" />
           </label>
 
           <label>
             轮次
-            <select v-model="selectedRoundId">
-              <option value="">请选择轮次</option>
-              <option v-for="round in rounds" :key="round.id" :value="String(round.id)">
+            <select v-model="draftRoundId" :disabled="!draftAvailableRounds.length">
+              <option value="">{{ draftAvailableRounds.length ? '请选择轮次' : '无轮次' }}</option>
+              <option v-for="round in draftAvailableRounds" :key="round.id" :value="String(round.id)">
                 {{ round.name }}（{{ roundScopeLabel(round.target_scope) }}）
               </option>
             </select>
@@ -65,13 +65,8 @@
           </div>
           <div class="stat-box">
             <span class="stat-label">可用轮次数</span>
-            <strong>{{ rounds.length }}</strong>
+            <strong>{{ appliedAvailableRounds.length }}</strong>
           </div>
-        </div>
-
-        <div class="placeholder-state">
-          <strong>本页会优先做前端可预判校验。</strong>
-          <p>已选、未选轮次、轮次关闭、学期不匹配、轮次上限等情况会直接提示；容量已满、时间冲突等仍以后端返回为准。</p>
         </div>
       </article>
     </div>
@@ -164,12 +159,18 @@ const sections = ref([])
 const myEnrollments = ref([])
 const loading = ref(false)
 const enrollingId = ref(null)
-const selectedRoundId = ref('')
+const draftRoundId = ref('')
+const appliedRoundId = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const filters = reactive({
+const draftFilters = reactive({
+  termId: '',
+  q: '',
+})
+
+const appliedFilters = reactive({
   termId: '',
   q: '',
 })
@@ -179,11 +180,17 @@ const message = reactive({
   type: 'success',
 })
 
-const activeRound = computed(() => rounds.value.find((item) => String(item.id) === selectedRoundId.value))
+const draftAvailableRounds = computed(() =>
+  draftFilters.termId ? rounds.value.filter((item) => String(item.term) === String(draftFilters.termId)) : rounds.value,
+)
+const appliedAvailableRounds = computed(() =>
+  appliedFilters.termId ? rounds.value.filter((item) => String(item.term) === String(appliedFilters.termId)) : rounds.value,
+)
+const activeRound = computed(() => appliedAvailableRounds.value.find((item) => String(item.id) === appliedRoundId.value))
 const enrolledSectionIds = computed(() => new Set(myEnrollments.value.map((item) => item.section_id)))
 const currentRoundEnrollmentCount = computed(() => {
-  if (!selectedRoundId.value) return 0
-  return myEnrollments.value.filter((item) => String(item.round) === selectedRoundId.value).length
+  if (!appliedRoundId.value) return 0
+  return myEnrollments.value.filter((item) => String(item.round) === appliedRoundId.value).length
 })
 
 function roundScopeLabel(value) {
@@ -205,7 +212,7 @@ function pickDefaultRound(roundList, termId = '') {
 
 function getAvailabilityReason(section) {
   if (enrolledSectionIds.value.has(section.id)) return '你已选过该班级'
-  if (!selectedRoundId.value || !activeRound.value) return '请先选择轮次'
+  if (!appliedRoundId.value || !activeRound.value) return '请先选择轮次并应用筛选'
   if (!isRoundOpen(activeRound.value)) return '当前轮次未开放'
   if (activeRound.value.target_scope === 'teacher') return '当前轮次不面向学生'
   if (String(section.term) !== String(activeRound.value.term)) return '当前班级不在所选轮次学期'
@@ -257,15 +264,15 @@ async function loadPageData() {
   try {
     await withPageLoading(async () => {
       const [roundList, sectionList, enrollmentList] = await Promise.all([
-        fetchRounds({ termId: filters.termId }),
+        fetchRounds(),
         fetchSections({
-          termId: filters.termId,
-          q: filters.q,
+          termId: appliedFilters.termId,
+          q: appliedFilters.q,
           paginate: true,
           page: currentPage.value,
           pageSize: pageSize.value,
         }),
-        fetchMyEnrollments({ termId: filters.termId }),
+        fetchMyEnrollments({ termId: appliedFilters.termId }),
       ])
 
       rounds.value = roundList
@@ -274,9 +281,17 @@ async function loadPageData() {
       total.value = count
       myEnrollments.value = enrollmentList
 
-      if (!rounds.value.some((item) => String(item.id) === selectedRoundId.value)) {
-        const defaultRound = pickDefaultRound(rounds.value, filters.termId)
-        selectedRoundId.value = defaultRound ? String(defaultRound.id) : ''
+      if (!appliedAvailableRounds.value.some((item) => String(item.id) === appliedRoundId.value)) {
+        const defaultRound = pickDefaultRound(rounds.value, appliedFilters.termId)
+        appliedRoundId.value = defaultRound ? String(defaultRound.id) : ''
+      }
+
+      if (!draftAvailableRounds.value.some((item) => String(item.id) === draftRoundId.value)) {
+        draftRoundId.value = ''
+      }
+
+      if (!draftRoundId.value && draftFilters.termId === appliedFilters.termId) {
+        draftRoundId.value = appliedRoundId.value
       }
     })
   } catch (error) {
@@ -288,13 +303,20 @@ async function loadPageData() {
 }
 
 async function handleSearch() {
+  appliedFilters.termId = draftFilters.termId
+  appliedFilters.q = draftFilters.q
+  appliedRoundId.value = draftRoundId.value
   currentPage.value = 1
   await loadPageData()
 }
 
 function resetFilters() {
-  filters.q = ''
-  filters.termId = ''
+  draftFilters.q = ''
+  draftFilters.termId = ''
+  draftRoundId.value = ''
+  appliedFilters.q = ''
+  appliedFilters.termId = ''
+  appliedRoundId.value = ''
   currentPage.value = 1
   loadPageData()
 }
@@ -317,7 +339,7 @@ async function enroll(section) {
 
   try {
     await createEnrollment({
-      round_id: Number(selectedRoundId.value),
+      round_id: Number(appliedRoundId.value),
       section_id: section.id,
     })
     await loadPageData()
@@ -332,9 +354,11 @@ async function enroll(section) {
 }
 
 watch(
-  () => filters.termId,
+  () => draftFilters.termId,
   () => {
-    selectedRoundId.value = ''
+    if (!draftAvailableRounds.value.some((item) => String(item.id) === draftRoundId.value)) {
+      draftRoundId.value = ''
+    }
   },
 )
 
@@ -348,3 +372,4 @@ onMounted(async () => {
   }
 })
 </script>
+

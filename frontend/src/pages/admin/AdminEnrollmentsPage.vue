@@ -62,7 +62,7 @@
       <article class="panel-card">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">只读页</p>
+            <p class="eyebrow">数据概览</p>
             <h3>记录概览</h3>
           </div>
         </div>
@@ -80,11 +80,6 @@
             <span class="stat-label">已退记录</span>
             <strong>{{ droppedCount }}</strong>
           </div>
-        </div>
-
-        <div class="placeholder-state">
-          <strong>当前页以查询与核对为主。</strong>
-          <p>管理员可以按轮次、班级、学生和状态组合筛选，后续如需导出、统计或批量处理，可在这个页面继续扩展。</p>
         </div>
       </article>
     </div>
@@ -254,3 +249,4 @@ onMounted(async () => {
   }
 })
 </script>
+

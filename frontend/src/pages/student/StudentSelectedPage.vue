@@ -30,8 +30,8 @@
       <article class="panel-card">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">当前说明</p>
-            <h3>退课规则</h3>
+            <p class="eyebrow">当前状态</p>
+            <h3>选课概览</h3>
           </div>
         </div>
 
@@ -48,11 +48,6 @@
             <span class="stat-label">当前状态</span>
             <strong>已选</strong>
           </div>
-        </div>
-
-        <div class="placeholder-state">
-          <strong>是否允许退课由后端轮次配置决定。</strong>
-          <p>如果当前轮次不允许退课或已关闭，后端会拒绝请求并返回中文原因。本页只展示当前仍处于已选状态的课程。</p>
         </div>
       </article>
     </div>
@@ -225,3 +220,4 @@ onMounted(async () => {
   }
 })
 </script>
+

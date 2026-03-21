@@ -1,6 +1,6 @@
 <template>
   <section class="page-stack">
-    <div class="panel-grid admin-grid">
+    <div>
       <article class="panel-card">
         <div class="panel-head">
           <div>
@@ -40,19 +40,6 @@
         <p v-if="message.text" :class="['message', message.type]">{{ message.text }}</p>
       </article>
 
-      <article class="panel-card">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">说明</p>
-            <h3>权限说明</h3>
-          </div>
-        </div>
-
-        <div class="placeholder-state">
-          <strong>所有已登录角色都可以读取学期数据。</strong>
-          <p>新增和修改学期仍只允许管理员执行，与后端权限控制保持一致。</p>
-        </div>
-      </article>
     </div>
 
     <ExpandablePanel panel-class="table-panel">
@@ -259,3 +246,4 @@ onMounted(() => {
   loadTerms()
 })
 </script>
+
