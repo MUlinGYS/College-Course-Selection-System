@@ -1,9 +1,5 @@
 export const navigationItems = [
   {
-    label: '公共',
-    items: [{ label: '个人信息', to: '/profile', roles: ['admin', 'teacher', 'student'] }],
-  },
-  {
     label: '管理员',
     items: [
       { label: '用户管理', to: '/admin/users', roles: ['admin'] },
@@ -26,5 +22,9 @@ export const navigationItems = [
   {
     label: '教师',
     items: [{ label: '我的班级', to: '/teacher/sections', roles: ['teacher'] }],
+  },
+  {
+    label: '公共',
+    items: [{ label: '个人信息', to: '/profile', roles: ['admin', 'teacher', 'student'] }],
   },
 ]
