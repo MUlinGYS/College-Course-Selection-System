@@ -16,6 +16,7 @@ from urllib.parse import quote
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIST_DIR = BASE_DIR.parent / "frontend" / "dist"
 
 SECRET_KEY = "django-insecure-=!-ku=cyx*&honp6yn*=w8v&f+xqw&n*u*jn#*o9c%a4nnplw$"
 
