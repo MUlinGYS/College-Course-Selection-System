@@ -1,6 +1,19 @@
+from drf_spectacular.openapi import AutoSchema
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, inline_serializer
 from rest_framework import serializers
+
+
+class ProjectAutoSchema(AutoSchema):
+    def get_operation_id(self):
+        operation_id = super().get_operation_id()
+        if not operation_id.endswith("_retrieve"):
+            return operation_id
+
+        if "{" in self.path:
+            return operation_id.replace("_retrieve", "_detail")
+
+        return operation_id.replace("_retrieve", "_list")
 
 
 def paginated_response(name, item_serializer):

@@ -25,6 +25,7 @@ class TermListCreateView(AdminWriteGuardMixin, APIView):
     serializer_class = TermSerializer
 
     @extend_schema(
+        operation_id="terms_list",
         summary="获取学期列表",
         description="查询学期列表。传入 `paginate=1` 时，返回真实分页结构。",
         parameters=PAGINATION_PARAMETERS,
@@ -60,7 +61,7 @@ class TermDetailView(AdminWriteGuardMixin, APIView):
     def get_object(self, term_id):
         return get_object_or_404(Term, pk=term_id)
 
-    @extend_schema(summary="获取学期详情", description="根据学期 ID 获取单个学期详情。", responses=TermSerializer)
+    @extend_schema(operation_id="terms_detail", summary="获取学期详情", description="根据学期 ID 获取单个学期详情。", responses=TermSerializer)
     def get(self, request, term_id):
         term = self.get_object(term_id)
         return Response(TermSerializer(term).data)
@@ -83,6 +84,7 @@ class RoundListCreateView(AdminWriteGuardMixin, APIView):
     serializer_class = RoundSerializer
 
     @extend_schema(
+        operation_id="rounds_list",
         summary="获取轮次列表",
         description="查询选课轮次。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。",
         parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER],
@@ -122,7 +124,7 @@ class RoundDetailView(AdminWriteGuardMixin, APIView):
     def get_object(self, round_id):
         return get_object_or_404(Round.objects.select_related("term"), pk=round_id)
 
-    @extend_schema(summary="获取轮次详情", description="根据轮次 ID 获取单个轮次详情。", responses=RoundSerializer)
+    @extend_schema(operation_id="rounds_detail", summary="获取轮次详情", description="根据轮次 ID 获取单个轮次详情。", responses=RoundSerializer)
     def get(self, request, round_id):
         round_instance = self.get_object(round_id)
         return Response(RoundSerializer(round_instance).data)

@@ -33,6 +33,7 @@ class CourseListCreateView(AdminWriteGuardMixin, APIView):
     serializer_class = CourseSerializer
 
     @extend_schema(
+        operation_id="courses_list",
         summary="获取课程列表",
         description="查询课程库。支持关键字搜索；传入 `paginate=1` 时，返回真实分页结构。",
         parameters=PAGINATION_PARAMETERS + [KEYWORD_PARAMETER],
@@ -71,7 +72,7 @@ class CourseDetailView(AdminWriteGuardMixin, APIView):
     def get_object(self, course_id):
         return get_object_or_404(Course, pk=course_id)
 
-    @extend_schema(summary="获取课程详情", description="根据课程 ID 获取单个课程详情。", responses=CourseSerializer)
+    @extend_schema(operation_id="courses_detail", summary="获取课程详情", description="根据课程 ID 获取单个课程详情。", responses=CourseSerializer)
     def get(self, request, course_id):
         course = self.get_object(course_id)
         return Response(CourseSerializer(course).data)
@@ -104,6 +105,7 @@ class SectionListCreateView(AdminWriteGuardMixin, APIView):
     serializer_class = SectionSerializer
 
     @extend_schema(
+        operation_id="sections_list",
         summary="获取开课班级列表",
         description="查询开课班级。支持按学期、课程、教师和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
         parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, COURSE_ID_PARAMETER, TEACHER_ID_PARAMETER, KEYWORD_PARAMETER],
@@ -161,7 +163,7 @@ class SectionDetailView(AdminWriteGuardMixin, APIView):
             pk=section_id,
         )
 
-    @extend_schema(summary="获取开课班级详情", description="根据开课班级 ID 获取详情。", responses=SectionSerializer)
+    @extend_schema(operation_id="sections_detail", summary="获取开课班级详情", description="根据开课班级 ID 获取详情。", responses=SectionSerializer)
     def get(self, request, section_id):
         section = self.get_object(section_id)
         return Response(SectionSerializer(section).data)

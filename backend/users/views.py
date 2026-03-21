@@ -128,6 +128,7 @@ class UserListCreateView(APIView):
         return UserSerializer(users, many=True).data
 
     @extend_schema(
+        operation_id="users_list",
         summary="获取用户列表",
         description="管理员查询系统用户。支持按角色和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
         parameters=PAGINATION_PARAMETERS + [ROLE_PARAMETER, KEYWORD_PARAMETER],
@@ -180,7 +181,7 @@ class UserDetailView(APIView):
         ensure_user_profile(user)
         return user
 
-    @extend_schema(summary="获取用户详情", description="管理员根据用户 ID 查看单个用户详情。", responses=UserSerializer)
+    @extend_schema(operation_id="users_detail", summary="获取用户详情", description="管理员根据用户 ID 查看单个用户详情。", responses=UserSerializer)
     def get(self, request, user_id):
         user = self.get_object(user_id)
         return Response(UserSerializer(user).data)

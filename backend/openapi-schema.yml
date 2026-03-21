@@ -6,7 +6,7 @@ info:
 paths:
   /api/admin/course-applications:
     get:
-      operationId: admin_course_applications_retrieve
+      operationId: admin_course_applications_list
       description: 管理员查询所有教师开课申报。支持按学期、轮次、教师、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取开课申报审核列表
       parameters:
@@ -165,7 +165,7 @@ paths:
           description: ''
   /api/courses:
     get:
-      operationId: courses_retrieve
+      operationId: courses_list
       description: 查询课程库。支持关键字搜索；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取课程列表
       parameters:
@@ -229,7 +229,7 @@ paths:
           description: ''
   /api/courses/{course_id}:
     get:
-      operationId: courses_retrieve_2
+      operationId: courses_detail
       description: 根据课程 ID 获取单个课程详情。
       summary: 获取课程详情
       parameters:
@@ -301,7 +301,7 @@ paths:
           description: No response body
   /api/enrollments:
     get:
-      operationId: enrollments_retrieve
+      operationId: enrollments_list
       description: 管理员查询系统中的选课记录。支持按轮次、班级、学生和状态筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取选课记录列表
       parameters:
@@ -398,7 +398,7 @@ paths:
           description: No response body
   /api/me:
     get:
-      operationId: me_retrieve
+      operationId: me_list
       description: 返回当前登录用户的基本信息和角色资料。
       summary: 获取当前用户信息
       tags:
@@ -468,7 +468,7 @@ paths:
           description: ''
   /api/my/conflicts:
     get:
-      operationId: my_conflicts_retrieve
+      operationId: my_conflicts_list
       description: 学生查询自己已选课程中的时间冲突对。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取我的冲突课程
       parameters:
@@ -505,7 +505,7 @@ paths:
           description: ''
   /api/my/enrollments:
     get:
-      operationId: my_enrollments_retrieve
+      operationId: my_enrollments_list
       description: 学生查询自己当前已选中的课程。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取我的已选课程
       parameters:
@@ -566,7 +566,7 @@ paths:
           description: ''
   /api/rounds:
     get:
-      operationId: rounds_retrieve
+      operationId: rounds_list
       description: 查询选课轮次。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取轮次列表
       parameters:
@@ -630,7 +630,7 @@ paths:
           description: ''
   /api/rounds/{round_id}:
     get:
-      operationId: rounds_retrieve_2
+      operationId: rounds_detail
       description: 根据轮次 ID 获取单个轮次详情。
       summary: 获取轮次详情
       parameters:
@@ -685,7 +685,7 @@ paths:
           description: ''
   /api/sections:
     get:
-      operationId: sections_retrieve
+      operationId: sections_list
       description: 查询开课班级。支持按学期、课程、教师和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取开课班级列表
       parameters:
@@ -764,7 +764,7 @@ paths:
           description: ''
   /api/sections/{section_id}:
     get:
-      operationId: sections_retrieve_2
+      operationId: sections_detail
       description: 根据开课班级 ID 获取详情。
       summary: 获取开课班级详情
       parameters:
@@ -836,7 +836,7 @@ paths:
           description: No response body
   /api/teacher/course-applications:
     get:
-      operationId: teacher_course_applications_retrieve
+      operationId: teacher_course_applications_list
       description: 教师查询自己提交的开课申报。支持按学期、轮次、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取我的开课申报列表
       parameters:
@@ -966,7 +966,7 @@ paths:
           description: No response body
   /api/teacher/sections:
     get:
-      operationId: teacher_sections_retrieve
+      operationId: teacher_sections_list
       description: 教师查看自己负责的开课班级，管理员可查看全部。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取授课班级列表
       parameters:
@@ -1003,7 +1003,7 @@ paths:
           description: ''
   /api/teacher/sections/{section_id}/roster:
     get:
-      operationId: teacher_sections_roster_retrieve
+      operationId: teacher_sections_roster_detail
       description: 教师查看自己授课班级的选课学生名单，管理员可查看任意班级。传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取班级学生名单
       parameters:
@@ -1040,7 +1040,7 @@ paths:
           description: ''
   /api/terms:
     get:
-      operationId: terms_retrieve
+      operationId: terms_list
       description: 查询学期列表。传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取学期列表
       parameters:
@@ -1099,7 +1099,7 @@ paths:
           description: ''
   /api/terms/{term_id}:
     get:
-      operationId: terms_retrieve_2
+      operationId: terms_detail
       description: 根据学期 ID 获取单个学期详情。
       summary: 获取学期详情
       parameters:
@@ -1154,7 +1154,7 @@ paths:
           description: ''
   /api/users:
     get:
-      operationId: users_retrieve
+      operationId: users_list
       description: 管理员查询系统用户。支持按角色和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
       summary: 获取用户列表
       parameters:
@@ -1223,7 +1223,7 @@ paths:
           description: ''
   /api/users/{user_id}:
     get:
-      operationId: users_retrieve_2
+      operationId: users_detail
       description: 管理员根据用户 ID 查看单个用户详情。
       summary: 获取用户详情
       parameters:

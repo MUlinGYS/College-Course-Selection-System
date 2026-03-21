@@ -142,7 +142,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "core.swagger.ProjectAutoSchema",
     "EXCEPTION_HANDLER": "core.exception_handler.custom_exception_handler",
 }
 
