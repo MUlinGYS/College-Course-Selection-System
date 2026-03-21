@@ -57,22 +57,22 @@ class UserSerializer(serializers.ModelSerializer):
     def _profile(self, obj):
         return ensure_user_profile(obj)
 
-    def get_role(self, obj):
+    def get_role(self, obj) -> str:
         return self._profile(obj).role
 
-    def get_real_name(self, obj):
+    def get_real_name(self, obj) -> str:
         return self._profile(obj).real_name
 
-    def get_student_no(self, obj):
+    def get_student_no(self, obj) -> str:
         return self._profile(obj).student_no
 
-    def get_teacher_no(self, obj):
+    def get_teacher_no(self, obj) -> str:
         return self._profile(obj).teacher_no
 
-    def get_phone(self, obj):
+    def get_phone(self, obj) -> str:
         return self._profile(obj).phone
 
-    def get_department(self, obj):
+    def get_department(self, obj) -> str:
         return self._profile(obj).department
 
 

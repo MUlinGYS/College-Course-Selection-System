@@ -50,7 +50,7 @@ class SectionSerializer(serializers.ModelSerializer):
             "teacher_username",
         ]
 
-    def get_teacher_name(self, obj):
+    def get_teacher_name(self, obj) -> str:
         profile = getattr(obj.teacher, "profile", None)
         return profile.real_name if profile and profile.real_name else obj.teacher.username
 

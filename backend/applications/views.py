@@ -2,6 +2,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +10,15 @@ from rest_framework.views import APIView
 
 from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin, IsTeacher
+from core.swagger import (
+    KEYWORD_PARAMETER,
+    PAGINATION_PARAMETERS,
+    ROUND_ID_PARAMETER,
+    STATUS_PARAMETER,
+    TEACHER_ID_PARAMETER,
+    TERM_ID_PARAMETER,
+    paginated_response,
+)
 from .models import CourseApplication
 from .serializers import (
     CourseApplicationReviewSerializer,
@@ -34,6 +44,7 @@ class ApplicationPermissionMixin:
 
 class TeacherCourseApplicationListCreateView(ApplicationPermissionMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CourseApplicationSerializer
 
     def get_queryset(self, request):
         queryset = (
@@ -72,6 +83,12 @@ class TeacherCourseApplicationListCreateView(ApplicationPermissionMixin, APIView
 
         return queryset
 
+    @extend_schema(
+        summary="获取我的开课申报列表",
+        description="教师查询自己提交的开课申报。支持按学期、轮次、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, ROUND_ID_PARAMETER, STATUS_PARAMETER, KEYWORD_PARAMETER],
+        responses=paginated_response("PaginatedTeacherCourseApplicationListResponse", CourseApplicationSerializer),
+    )
     def get(self, request):
         denied = self.ensure_teacher(request)
         if denied:
@@ -85,6 +102,12 @@ class TeacherCourseApplicationListCreateView(ApplicationPermissionMixin, APIView
 
         return Response(CourseApplicationSerializer(queryset, many=True).data)
 
+    @extend_schema(
+        summary="提交开课申报",
+        description="教师提交新的开课申报，申报需明确绑定学期和轮次。",
+        request=CourseApplicationWriteSerializer,
+        responses=CourseApplicationSerializer,
+    )
     def post(self, request):
         denied = self.ensure_teacher(request)
         if denied:
@@ -99,6 +122,7 @@ class TeacherCourseApplicationListCreateView(ApplicationPermissionMixin, APIView
 
 class TeacherCourseApplicationDetailView(ApplicationPermissionMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CourseApplicationSerializer
 
     def get_object(self, request, application_id):
         return get_object_or_404(
@@ -116,6 +140,12 @@ class TeacherCourseApplicationDetailView(ApplicationPermissionMixin, APIView):
             teacher=request.user,
         )
 
+    @extend_schema(
+        summary="修改开课申报",
+        description="教师修改自己的开课申报。已通过的申报不可修改；已驳回的申报重新提交后会复用原记录并重置为待审核。",
+        request=CourseApplicationWriteSerializer,
+        responses=CourseApplicationSerializer,
+    )
     def put(self, request, application_id):
         denied = self.ensure_teacher(request)
         if denied:
@@ -150,6 +180,7 @@ class TeacherCourseApplicationDetailView(ApplicationPermissionMixin, APIView):
 
         return Response(CourseApplicationSerializer(instance).data)
 
+    @extend_schema(summary="删除开课申报", description="教师删除自己的待审核开课申报。", request=None, responses={204: None})
     def delete(self, request, application_id):
         denied = self.ensure_teacher(request)
         if denied:
@@ -165,7 +196,14 @@ class TeacherCourseApplicationDetailView(ApplicationPermissionMixin, APIView):
 
 class AdminCourseApplicationListView(ApplicationPermissionMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CourseApplicationSerializer
 
+    @extend_schema(
+        summary="获取开课申报审核列表",
+        description="管理员查询所有教师开课申报。支持按学期、轮次、教师、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, ROUND_ID_PARAMETER, TEACHER_ID_PARAMETER, STATUS_PARAMETER, KEYWORD_PARAMETER],
+        responses=paginated_response("PaginatedAdminCourseApplicationListResponse", CourseApplicationSerializer),
+    )
     def get(self, request):
         denied = self.ensure_admin(request)
         if denied:
@@ -216,7 +254,14 @@ class AdminCourseApplicationListView(ApplicationPermissionMixin, APIView):
 
 class AdminCourseApplicationReviewView(ApplicationPermissionMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CourseApplicationSerializer
 
+    @extend_schema(
+        summary="审核开课申报",
+        description="管理员对待审核开课申报执行通过或驳回。通过后会自动落地为课程和开课班级。",
+        request=CourseApplicationReviewSerializer,
+        responses=CourseApplicationSerializer,
+    )
     def post(self, request, application_id):
         denied = self.ensure_admin(request)
         if denied:

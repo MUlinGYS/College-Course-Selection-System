@@ -52,11 +52,11 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_student_name(self, obj):
+    def get_student_name(self, obj) -> str:
         profile = getattr(obj.student, "profile", None)
         return profile.real_name if profile and profile.real_name else obj.student.username
 
-    def get_teacher_name(self, obj):
+    def get_teacher_name(self, obj) -> str:
         profile = getattr(obj.section.teacher, "profile", None)
         return profile.real_name if profile and profile.real_name else obj.section.teacher.username
 
@@ -97,3 +97,21 @@ class ConflictSerializer(serializers.Serializer):
     second_section_name = serializers.CharField()
     second_teacher_name = serializers.CharField()
     second_location = serializers.CharField()
+
+
+class TeacherSectionSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    term_id = serializers.IntegerField()
+    term_name = serializers.CharField()
+    course_id = serializers.IntegerField()
+    course_code = serializers.CharField()
+    course_name = serializers.CharField()
+    name = serializers.CharField()
+    teacher_id = serializers.IntegerField()
+    teacher_name = serializers.CharField()
+    capacity = serializers.IntegerField()
+    enrolled_count = serializers.IntegerField()
+    weekday = serializers.IntegerField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    location = serializers.CharField()

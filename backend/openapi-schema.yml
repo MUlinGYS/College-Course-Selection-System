@@ -1,0 +1,2543 @@
+openapi: 3.0.3
+info:
+  title: 高校选课系统 API
+  version: 1.0.0
+  description: 基于 Django REST Framework 的高校选课系统接口文档。
+paths:
+  /api/admin/course-applications:
+    get:
+      operationId: admin_course_applications_retrieve
+      description: 管理员查询所有教师开课申报。支持按学期、轮次、教师、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取开课申报审核列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: 关键字模糊搜索。
+      - in: query
+        name: round_id
+        schema:
+          type: integer
+        description: 按轮次 ID 筛选。
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: 按状态筛选，具体可选值以该接口业务状态为准。
+      - in: query
+        name: teacher_id
+        schema:
+          type: integer
+        description: 按教师用户 ID 筛选。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAdminCourseApplicationListResponse'
+          description: ''
+  /api/admin/course-applications/{application_id}/review:
+    post:
+      operationId: admin_course_applications_review_create
+      description: 管理员对待审核开课申报执行通过或驳回。通过后会自动落地为课程和开课班级。
+      summary: 审核开课申报
+      parameters:
+      - in: path
+        name: application_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationReview'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationReview'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationReview'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseApplication'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: 使用用户名和密码登录，返回访问令牌、刷新令牌和当前用户信息。
+      summary: 用户登录
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+          description: ''
+  /api/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: 前端调用的退出登录接口，当前仅返回成功标记，由前端自行清理本地令牌。
+      summary: 退出登录
+      tags:
+      - auth
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+          description: ''
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: 使用刷新令牌换取新的访问令牌。
+      summary: 刷新访问令牌
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponseBody'
+          description: ''
+  /api/courses:
+    get:
+      operationId: courses_retrieve
+      description: 查询课程库。支持关键字搜索；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取课程列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: 关键字模糊搜索。
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCourseListResponse'
+          description: ''
+    post:
+      operationId: courses_create
+      description: 管理员创建课程库中的课程基础信息。
+      summary: 创建课程
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Course'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Course'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Course'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+  /api/courses/{course_id}:
+    get:
+      operationId: courses_retrieve_2
+      description: 根据课程 ID 获取单个课程详情。
+      summary: 获取课程详情
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    put:
+      operationId: courses_update
+      description: 管理员更新指定课程的基础信息。
+      summary: 更新课程
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Course'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Course'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Course'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    delete:
+      operationId: courses_destroy
+      description: 管理员删除指定课程。
+      summary: 删除课程
+      parameters:
+      - in: path
+        name: course_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - courses
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/enrollments:
+    get:
+      operationId: enrollments_retrieve
+      description: 管理员查询系统中的选课记录。支持按轮次、班级、学生和状态筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取选课记录列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: round_id
+        schema:
+          type: integer
+        description: 按轮次 ID 筛选。
+      - in: query
+        name: section_id
+        schema:
+          type: integer
+        description: 按开课班级 ID 筛选。
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: 按状态筛选，具体可选值以该接口业务状态为准。
+      - in: query
+        name: student_id
+        schema:
+          type: integer
+        description: 按学生用户 ID 筛选。
+      tags:
+      - enrollments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEnrollmentListResponse'
+          description: ''
+    post:
+      operationId: enrollments_create
+      description: 学生在开放轮次内提交选课请求。接口会校验轮次开放状态、容量、时间冲突、上限，并使用 Redis 锁做并发保护。
+      summary: 提交选课
+      tags:
+      - enrollments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EnrollmentWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EnrollmentWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+          description: ''
+  /api/enrollments/{enrollment_id}:
+    delete:
+      operationId: enrollments_destroy
+      description: 学生取消自己已选中的课程。仅在轮次允许退课且轮次处于开放时间内时可执行。
+      summary: 退课
+      parameters:
+      - in: path
+        name: enrollment_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - enrollments
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/me:
+    get:
+      operationId: me_retrieve
+      description: 返回当前登录用户的基本信息和角色资料。
+      summary: 获取当前用户信息
+      tags:
+      - me
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: me_update
+      description: 更新当前登录用户可自行维护的资料字段，如邮箱、姓名、电话和部门。
+      summary: 更新当前用户资料
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfProfileUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SelfProfileUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SelfProfileUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/me/password:
+    post:
+      operationId: me_password_create
+      description: 校验旧密码后更新当前登录用户密码。
+      summary: 修改当前用户密码
+      tags:
+      - me
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePasswordResponse'
+          description: ''
+  /api/my/conflicts:
+    get:
+      operationId: my_conflicts_retrieve
+      description: 学生查询自己已选课程中的时间冲突对。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取我的冲突课程
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - my
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyConflictListResponse'
+          description: ''
+  /api/my/enrollments:
+    get:
+      operationId: my_enrollments_retrieve
+      description: 学生查询自己当前已选中的课程。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取我的已选课程
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - my
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyEnrollmentListResponse'
+          description: ''
+  /api/my/timetable:
+    get:
+      operationId: my_timetable_list
+      description: 学生获取当前已选课程形成的课表视图，支持按学期筛选。
+      summary: 获取我的课表
+      parameters:
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - my
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Timetable'
+          description: ''
+  /api/rounds:
+    get:
+      operationId: rounds_retrieve
+      description: 查询选课轮次。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取轮次列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - rounds
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRoundListResponse'
+          description: ''
+    post:
+      operationId: rounds_create
+      description: 管理员创建选课轮次，并归属到指定学期。
+      summary: 创建轮次
+      tags:
+      - rounds
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Round'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Round'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Round'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Round'
+          description: ''
+  /api/rounds/{round_id}:
+    get:
+      operationId: rounds_retrieve_2
+      description: 根据轮次 ID 获取单个轮次详情。
+      summary: 获取轮次详情
+      parameters:
+      - in: path
+        name: round_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - rounds
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Round'
+          description: ''
+    put:
+      operationId: rounds_update
+      description: 管理员更新指定轮次的时间、范围和限制条件。
+      summary: 更新轮次
+      parameters:
+      - in: path
+        name: round_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - rounds
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Round'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Round'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Round'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Round'
+          description: ''
+  /api/sections:
+    get:
+      operationId: sections_retrieve
+      description: 查询开课班级。支持按学期、课程、教师和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取开课班级列表
+      parameters:
+      - in: query
+        name: course_id
+        schema:
+          type: integer
+        description: 按课程 ID 筛选。
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: 关键字模糊搜索。
+      - in: query
+        name: teacher_id
+        schema:
+          type: integer
+        description: 按教师用户 ID 筛选。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - sections
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSectionListResponse'
+          description: ''
+    post:
+      operationId: sections_create
+      description: 管理员为课程创建具体开课班级。
+      summary: 创建开课班级
+      tags:
+      - sections
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Section'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Section'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Section'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+          description: ''
+  /api/sections/{section_id}:
+    get:
+      operationId: sections_retrieve_2
+      description: 根据开课班级 ID 获取详情。
+      summary: 获取开课班级详情
+      parameters:
+      - in: path
+        name: section_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - sections
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+          description: ''
+    put:
+      operationId: sections_update
+      description: 管理员更新指定开课班级信息。
+      summary: 更新开课班级
+      parameters:
+      - in: path
+        name: section_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - sections
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Section'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Section'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Section'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+          description: ''
+    delete:
+      operationId: sections_destroy
+      description: 管理员删除指定开课班级。
+      summary: 删除开课班级
+      parameters:
+      - in: path
+        name: section_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - sections
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/teacher/course-applications:
+    get:
+      operationId: teacher_course_applications_retrieve
+      description: 教师查询自己提交的开课申报。支持按学期、轮次、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取我的开课申报列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: 关键字模糊搜索。
+      - in: query
+        name: round_id
+        schema:
+          type: integer
+        description: 按轮次 ID 筛选。
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: 按状态筛选，具体可选值以该接口业务状态为准。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherCourseApplicationListResponse'
+          description: ''
+    post:
+      operationId: teacher_course_applications_create
+      description: 教师提交新的开课申报，申报需明确绑定学期和轮次。
+      summary: 提交开课申报
+      tags:
+      - teacher
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseApplication'
+          description: ''
+  /api/teacher/course-applications/{application_id}:
+    put:
+      operationId: teacher_course_applications_update
+      description: 教师修改自己的开课申报。已通过的申报不可修改；已驳回的申报重新提交后会复用原记录并重置为待审核。
+      summary: 修改开课申报
+      parameters:
+      - in: path
+        name: application_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teacher
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseApplicationWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseApplication'
+          description: ''
+    delete:
+      operationId: teacher_course_applications_destroy
+      description: 教师删除自己的待审核开课申报。
+      summary: 删除开课申报
+      parameters:
+      - in: path
+        name: application_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/teacher/sections:
+    get:
+      operationId: teacher_sections_retrieve
+      description: 教师查看自己负责的开课班级，管理员可查看全部。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取授课班级列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: term_id
+        schema:
+          type: integer
+        description: 按学期 ID 筛选。
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherSectionListResponse'
+          description: ''
+  /api/teacher/sections/{section_id}/roster:
+    get:
+      operationId: teacher_sections_roster_retrieve
+      description: 教师查看自己授课班级的选课学生名单，管理员可查看任意班级。传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取班级学生名单
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: path
+        name: section_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - teacher
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherRosterResponse'
+          description: ''
+  /api/terms:
+    get:
+      operationId: terms_retrieve
+      description: 查询学期列表。传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取学期列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      tags:
+      - terms
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTermListResponse'
+          description: ''
+    post:
+      operationId: terms_create
+      description: 管理员创建新的学期。
+      summary: 创建学期
+      tags:
+      - terms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Term'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Term'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Term'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Term'
+          description: ''
+  /api/terms/{term_id}:
+    get:
+      operationId: terms_retrieve_2
+      description: 根据学期 ID 获取单个学期详情。
+      summary: 获取学期详情
+      parameters:
+      - in: path
+        name: term_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - terms
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Term'
+          description: ''
+    put:
+      operationId: terms_update
+      description: 管理员更新指定学期信息。
+      summary: 更新学期
+      parameters:
+      - in: path
+        name: term_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - terms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Term'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Term'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Term'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Term'
+          description: ''
+  /api/users:
+    get:
+      operationId: users_retrieve
+      description: 管理员查询系统用户。支持按角色和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。
+      summary: 获取用户列表
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: 页码，从 1 开始。仅在 `paginate=1` 时生效。
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 每页条数，默认 10，最大 100。仅在 `paginate=1` 时生效。
+      - in: query
+        name: paginate
+        schema:
+          type: string
+        description: 传入 `1` 时启用分页返回结构。
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: 关键字模糊搜索。
+      - in: query
+        name: role
+        schema:
+          type: string
+        description: 按角色筛选，可选值：`student`、`teacher`、`admin`。
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserListResponse'
+          description: ''
+    post:
+      operationId: users_create
+      description: 管理员创建学生、教师或管理员账号，并同步写入资料信息。
+      summary: 创建用户
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminUserWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminUserWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{user_id}:
+    get:
+      operationId: users_retrieve_2
+      description: 管理员根据用户 ID 查看单个用户详情。
+      summary: 获取用户详情
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: users_update
+      description: 管理员更新指定用户的账号信息、资料字段和启用状态。
+      summary: 更新用户
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminUserWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminUserWrite'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: users_destroy
+      description: 管理员删除指定用户，但不能删除当前登录账号。
+      summary: 删除用户
+      parameters:
+      - in: path
+        name: user_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    ActionEnum:
+      enum:
+      - approve
+      - reject
+      type: string
+      description: |-
+        * `approve` - approve
+        * `reject` - reject
+    AdminUserWrite:
+      type: object
+      properties:
+        username:
+          type: string
+          title: 用户名
+          description: 必填；长度为150个字符或以下；只能包含字母、数字、特殊字符“@”、“.”、“-”和“_”。
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        password:
+          type: string
+          writeOnly: true
+          minLength: 6
+        email:
+          type: string
+          format: email
+          title: 电子邮件地址
+          maxLength: 254
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        real_name:
+          type: string
+          default: ''
+        student_no:
+          type: string
+          default: ''
+        teacher_no:
+          type: string
+          default: ''
+        phone:
+          type: string
+          default: ''
+        department:
+          type: string
+          default: ''
+        is_enabled:
+          type: boolean
+          default: true
+      required:
+      - role
+      - username
+    ChangePassword:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 6
+        confirm_password:
+          type: string
+          writeOnly: true
+      required:
+      - confirm_password
+      - current_password
+      - new_password
+    ChangePasswordResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - ok
+    Conflict:
+      type: object
+      properties:
+        conflict_key:
+          type: string
+        term_id:
+          type: integer
+        term_name:
+          type: string
+        weekday:
+          type: integer
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        message:
+          type: string
+        first_enrollment_id:
+          type: integer
+        first_section_id:
+          type: integer
+        first_course_code:
+          type: string
+        first_course_name:
+          type: string
+        first_section_name:
+          type: string
+        first_teacher_name:
+          type: string
+        first_location:
+          type: string
+        second_enrollment_id:
+          type: integer
+        second_section_id:
+          type: integer
+        second_course_code:
+          type: string
+        second_course_name:
+          type: string
+        second_section_name:
+          type: string
+        second_teacher_name:
+          type: string
+        second_location:
+          type: string
+      required:
+      - conflict_key
+      - end_time
+      - first_course_code
+      - first_course_name
+      - first_enrollment_id
+      - first_location
+      - first_section_id
+      - first_section_name
+      - first_teacher_name
+      - message
+      - second_course_code
+      - second_course_name
+      - second_enrollment_id
+      - second_location
+      - second_section_id
+      - second_section_name
+      - second_teacher_name
+      - start_time
+      - term_id
+      - term_name
+      - weekday
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 200
+        credits:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id
+      - name
+      - updated_at
+    CourseApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        teacher:
+          type: integer
+          readOnly: true
+        teacher_name:
+          type: string
+          readOnly: true
+        teacher_username:
+          type: string
+          readOnly: true
+        term:
+          type: integer
+        term_name:
+          type: string
+          readOnly: true
+        round:
+          type: integer
+          nullable: true
+        round_name:
+          type: string
+          readOnly: true
+        course_code:
+          type: string
+          maxLength: 50
+        course_name:
+          type: string
+          maxLength: 200
+        credits:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        course_description:
+          type: string
+        section_name:
+          type: string
+          maxLength: 100
+        capacity:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        weekday:
+          allOf:
+          - $ref: '#/components/schemas/WeekdayEnum'
+          minimum: 0
+          maximum: 65535
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        location:
+          type: string
+          maxLength: 100
+        apply_note:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/CourseApplicationStatusEnum'
+          readOnly: true
+        review_note:
+          type: string
+          readOnly: true
+        reviewed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        reviewed_by_name:
+          type: string
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        linked_course:
+          type: integer
+          readOnly: true
+          nullable: true
+        linked_course_code:
+          type: string
+          readOnly: true
+        linked_course_name:
+          type: string
+          readOnly: true
+        linked_section:
+          type: integer
+          readOnly: true
+          nullable: true
+        linked_section_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_code
+      - course_name
+      - created_at
+      - end_time
+      - id
+      - linked_course
+      - linked_course_code
+      - linked_course_name
+      - linked_section
+      - linked_section_name
+      - review_note
+      - reviewed_at
+      - reviewed_by
+      - reviewed_by_name
+      - round_name
+      - section_name
+      - start_time
+      - status
+      - teacher
+      - teacher_name
+      - teacher_username
+      - term
+      - term_name
+      - updated_at
+      - weekday
+    CourseApplicationReview:
+      type: object
+      properties:
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+        review_note:
+          type: string
+          default: ''
+      required:
+      - action
+    CourseApplicationStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
+    CourseApplicationWrite:
+      type: object
+      properties:
+        term:
+          type: integer
+        round:
+          type: integer
+          nullable: true
+        course_code:
+          type: string
+          maxLength: 50
+        course_name:
+          type: string
+          maxLength: 200
+        credits:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        course_description:
+          type: string
+        section_name:
+          type: string
+          maxLength: 100
+        capacity:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        weekday:
+          allOf:
+          - $ref: '#/components/schemas/WeekdayEnum'
+          minimum: 0
+          maximum: 65535
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        location:
+          type: string
+          maxLength: 100
+        apply_note:
+          type: string
+      required:
+      - course_code
+      - course_name
+      - end_time
+      - section_name
+      - start_time
+      - term
+      - weekday
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        student_id:
+          type: integer
+          readOnly: true
+        student_username:
+          type: string
+          readOnly: true
+        student_name:
+          type: string
+          readOnly: true
+        round:
+          type: integer
+        round_name:
+          type: string
+          readOnly: true
+        term_id:
+          type: integer
+          readOnly: true
+        term_name:
+          type: string
+          readOnly: true
+        course_id:
+          type: integer
+          readOnly: true
+        course_code:
+          type: string
+          readOnly: true
+        course_name:
+          type: string
+          readOnly: true
+        section_id:
+          type: integer
+          readOnly: true
+        section_name:
+          type: string
+          readOnly: true
+        teacher_name:
+          type: string
+          readOnly: true
+        weekday:
+          type: integer
+          readOnly: true
+        start_time:
+          type: string
+          format: time
+          readOnly: true
+        end_time:
+          type: string
+          format: time
+          readOnly: true
+        location:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/EnrollmentStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_code
+      - course_id
+      - course_name
+      - created_at
+      - end_time
+      - id
+      - location
+      - round
+      - round_name
+      - section_id
+      - section_name
+      - start_time
+      - student_id
+      - student_name
+      - student_username
+      - teacher_name
+      - term_id
+      - term_name
+      - updated_at
+      - weekday
+    EnrollmentStatusEnum:
+      enum:
+      - enrolled
+      - dropped
+      type: string
+      description: |-
+        * `enrolled` - Enrolled
+        * `dropped` - Dropped
+    EnrollmentWrite:
+      type: object
+      properties:
+        round_id:
+          type: integer
+        section_id:
+          type: integer
+      required:
+      - round_id
+      - section_id
+    Login:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - access_token
+      - refresh_token
+      - user
+    LogoutResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+      - ok
+    PaginatedAdminCourseApplicationListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseApplication'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedCourseListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Course'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedEnrollmentListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedMyConflictListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedMyEnrollmentListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedRoundListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Round'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedSectionListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedTeacherCourseApplicationListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseApplication'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedTeacherRosterResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enrollment'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedTeacherSectionListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherSection'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedTermListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Term'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    PaginatedUserListResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        count:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - count
+      - page
+      - page_size
+      - results
+      - total_pages
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+      required:
+      - refresh
+    RefreshTokenResponseBody:
+      type: object
+      properties:
+        access_token:
+          type: string
+      required:
+      - access_token
+    RoleEnum:
+      enum:
+      - student
+      - teacher
+      - admin
+      type: string
+      description: |-
+        * `student` - Student
+        * `teacher` - Teacher
+        * `admin` - Admin
+    Round:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        term:
+          type: integer
+        term_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        start_at:
+          type: string
+          format: date-time
+        end_at:
+          type: string
+          format: date-time
+        target_scope:
+          $ref: '#/components/schemas/TargetScopeEnum'
+        max_courses:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        allow_drop:
+          type: boolean
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - end_at
+      - id
+      - name
+      - start_at
+      - term
+      - term_name
+      - updated_at
+    Section:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        term:
+          type: integer
+        term_name:
+          type: string
+          readOnly: true
+        course:
+          type: integer
+        course_name:
+          type: string
+          readOnly: true
+        course_code:
+          type: string
+          readOnly: true
+        teacher:
+          type: integer
+        teacher_name:
+          type: string
+          readOnly: true
+        teacher_username:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        capacity:
+          type: integer
+          maximum: 4294967295
+          minimum: 0
+          format: int64
+        weekday:
+          allOf:
+          - $ref: '#/components/schemas/WeekdayEnum'
+          minimum: 0
+          maximum: 65535
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        location:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course
+      - course_code
+      - course_name
+      - created_at
+      - end_time
+      - id
+      - name
+      - start_time
+      - teacher
+      - teacher_name
+      - teacher_username
+      - term
+      - term_name
+      - updated_at
+      - weekday
+    SelfProfileUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          title: 电子邮件地址
+          maxLength: 254
+        real_name:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          maxLength: 20
+        department:
+          type: string
+          maxLength: 100
+    TargetScopeEnum:
+      enum:
+      - all
+      - student
+      - teacher
+      type: string
+      description: |-
+        * `all` - All
+        * `student` - Student
+        * `teacher` - Teacher
+    TeacherSection:
+      type: object
+      properties:
+        id:
+          type: integer
+        term_id:
+          type: integer
+        term_name:
+          type: string
+        course_id:
+          type: integer
+        course_code:
+          type: string
+        course_name:
+          type: string
+        name:
+          type: string
+        teacher_id:
+          type: integer
+        teacher_name:
+          type: string
+        capacity:
+          type: integer
+        enrolled_count:
+          type: integer
+        weekday:
+          type: integer
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        location:
+          type: string
+      required:
+      - capacity
+      - course_code
+      - course_id
+      - course_name
+      - end_time
+      - enrolled_count
+      - id
+      - location
+      - name
+      - start_time
+      - teacher_id
+      - teacher_name
+      - term_id
+      - term_name
+      - weekday
+    Term:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - updated_at
+    Timetable:
+      type: object
+      properties:
+        enrollment_id:
+          type: integer
+        course_id:
+          type: integer
+        course_code:
+          type: string
+        course_name:
+          type: string
+        section_id:
+          type: integer
+        section_name:
+          type: string
+        teacher_name:
+          type: string
+        weekday:
+          type: integer
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        location:
+          type: string
+      required:
+      - course_code
+      - course_id
+      - course_name
+      - end_time
+      - enrollment_id
+      - location
+      - section_id
+      - section_name
+      - start_time
+      - teacher_name
+      - weekday
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: 用户名
+          description: 必填；长度为150个字符或以下；只能包含字母、数字、特殊字符“@”、“.”、“-”和“_”。
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: 电子邮件地址
+          maxLength: 254
+        role:
+          type: string
+          readOnly: true
+        real_name:
+          type: string
+          readOnly: true
+        student_no:
+          type: string
+          readOnly: true
+        teacher_no:
+          type: string
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        is_enabled:
+          type: boolean
+          readOnly: true
+        is_staff:
+          type: boolean
+          title: 工作人员状态
+          description: 指明用户是否可以登录到这个管理站点。
+        is_superuser:
+          type: boolean
+          title: 超级用户状态
+          description: 指明该用户缺省拥有所有权限。
+        date_joined:
+          type: string
+          format: date-time
+          title: 加入日期
+      required:
+      - department
+      - id
+      - is_enabled
+      - phone
+      - real_name
+      - role
+      - student_no
+      - teacher_no
+      - username
+    WeekdayEnum:
+      enum:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      type: integer
+      description: |-
+        * `1` - Monday
+        * `2` - Tuesday
+        * `3` - Wednesday
+        * `4` - Thursday
+        * `5` - Friday
+        * `6` - Saturday
+        * `7` - Sunday
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

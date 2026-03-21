@@ -2,6 +2,8 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,12 +12,27 @@ from rest_framework.views import APIView
 from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin
 from core.redis_lock import RedisLockBusy, RedisLockUnavailable, guarded_redis_locks
+from core.swagger import (
+    PAGINATION_PARAMETERS,
+    ROUND_ID_PARAMETER,
+    SECTION_ID_PARAMETER,
+    STATUS_PARAMETER,
+    STUDENT_ID_PARAMETER,
+    TERM_ID_PARAMETER,
+    paginated_response,
+)
 from core.utils import ensure_user_profile
 from courses.models import Section
 from rounds.models import Round
 from users.models import UserProfile
 from .models import Enrollment
-from .serializers import ConflictSerializer, EnrollmentSerializer, EnrollmentWriteSerializer, TimetableSerializer
+from .serializers import (
+    ConflictSerializer,
+    EnrollmentSerializer,
+    EnrollmentWriteSerializer,
+    TeacherSectionSerializer,
+    TimetableSerializer,
+)
 
 
 def error_response(code, message, http_status=status.HTTP_400_BAD_REQUEST):
@@ -57,7 +74,14 @@ class AdminGuardMixin:
 
 class EnrollmentCollectionView(StudentGuardMixin, AdminGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = EnrollmentSerializer
 
+    @extend_schema(
+        summary="获取选课记录列表",
+        description="管理员查询系统中的选课记录。支持按轮次、班级、学生和状态筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [ROUND_ID_PARAMETER, SECTION_ID_PARAMETER, STUDENT_ID_PARAMETER, STATUS_PARAMETER],
+        responses=paginated_response("PaginatedEnrollmentListResponse", EnrollmentSerializer),
+    )
     def get(self, request):
         denied = self.ensure_admin(request)
         if denied:
@@ -97,6 +121,12 @@ class EnrollmentCollectionView(StudentGuardMixin, AdminGuardMixin, APIView):
 
         return Response(EnrollmentSerializer(queryset, many=True).data)
 
+    @extend_schema(
+        summary="提交选课",
+        description="学生在开放轮次内提交选课请求。接口会校验轮次开放状态、容量、时间冲突、上限，并使用 Redis 锁做并发保护。",
+        request=EnrollmentWriteSerializer,
+        responses=EnrollmentSerializer,
+    )
     def post(self, request):
         denied = self.ensure_student(request)
         if denied:
@@ -207,6 +237,15 @@ class EnrollmentDetailView(StudentGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic
+    @extend_schema(
+        summary="退课",
+        description="学生取消自己已选中的课程。仅在轮次允许退课且轮次处于开放时间内时可执行。",
+        request=None,
+        responses=inline_serializer(
+            name="EnrollmentDeleteResponse",
+            fields={"ok": serializers.BooleanField()},
+        ),
+    )
     def delete(self, request, enrollment_id):
         denied = self.ensure_student(request)
         if denied:
@@ -235,7 +274,14 @@ class EnrollmentDetailView(StudentGuardMixin, APIView):
 
 class MyEnrollmentListView(StudentGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = EnrollmentSerializer
 
+    @extend_schema(
+        summary="获取我的已选课程",
+        description="学生查询自己当前已选中的课程。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER],
+        responses=paginated_response("PaginatedMyEnrollmentListResponse", EnrollmentSerializer),
+    )
     def get(self, request):
         denied = self.ensure_student(request)
         if denied:
@@ -271,7 +317,14 @@ class MyEnrollmentListView(StudentGuardMixin, APIView):
 
 class MyTimetableView(StudentGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = TimetableSerializer
 
+    @extend_schema(
+        summary="获取我的课表",
+        description="学生获取当前已选课程形成的课表视图，支持按学期筛选。",
+        parameters=[TERM_ID_PARAMETER],
+        responses=TimetableSerializer(many=True),
+    )
     def get(self, request):
         denied = self.ensure_student(request)
         if denied:
@@ -314,7 +367,14 @@ class MyTimetableView(StudentGuardMixin, APIView):
 
 class MyConflictListView(StudentGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = ConflictSerializer
 
+    @extend_schema(
+        summary="获取我的冲突课程",
+        description="学生查询自己已选课程中的时间冲突对。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER],
+        responses=paginated_response("PaginatedMyConflictListResponse", ConflictSerializer),
+    )
     def get(self, request):
         denied = self.ensure_student(request)
         if denied:
@@ -393,7 +453,14 @@ class MyConflictListView(StudentGuardMixin, APIView):
 
 class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = TeacherSectionSerializer
 
+    @extend_schema(
+        summary="获取授课班级列表",
+        description="教师查看自己负责的开课班级，管理员可查看全部。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER],
+        responses=paginated_response("PaginatedTeacherSectionListResponse", TeacherSectionSerializer),
+    )
     def get(self, request):
         denied = self.ensure_teacher_or_admin(request)
         if denied:
@@ -441,7 +508,14 @@ class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
 
 class TeacherRosterView(TeacherOrAdminGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = EnrollmentSerializer
 
+    @extend_schema(
+        summary="获取班级学生名单",
+        description="教师查看自己授课班级的选课学生名单，管理员可查看任意班级。传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS,
+        responses=paginated_response("PaginatedTeacherRosterResponse", EnrollmentSerializer),
+    )
     def get(self, request, section_id):
         denied = self.ensure_teacher_or_admin(request)
         if denied:

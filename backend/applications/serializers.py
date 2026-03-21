@@ -71,11 +71,11 @@ class CourseApplicationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_teacher_name(self, obj):
+    def get_teacher_name(self, obj) -> str:
         profile = getattr(obj.teacher, "profile", None)
         return profile.real_name if profile and profile.real_name else obj.teacher.username
 
-    def get_reviewed_by_name(self, obj):
+    def get_reviewed_by_name(self, obj) -> str:
         reviewer = getattr(obj, "reviewed_by", None)
         if not reviewer:
             return ""

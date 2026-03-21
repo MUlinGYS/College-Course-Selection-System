@@ -1,5 +1,6 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -7,6 +8,14 @@ from rest_framework.views import APIView
 
 from core.pagination import StandardPagination, should_paginate
 from core.permissions import IsAdmin
+from core.swagger import (
+    COURSE_ID_PARAMETER,
+    KEYWORD_PARAMETER,
+    PAGINATION_PARAMETERS,
+    TEACHER_ID_PARAMETER,
+    TERM_ID_PARAMETER,
+    paginated_response,
+)
 from .models import Course, Section
 from .serializers import CourseSerializer, SectionSerializer
 
@@ -21,7 +30,14 @@ class AdminWriteGuardMixin:
 
 class CourseListCreateView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CourseSerializer
 
+    @extend_schema(
+        summary="获取课程列表",
+        description="查询课程库。支持关键字搜索；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [KEYWORD_PARAMETER],
+        responses=paginated_response("PaginatedCourseListResponse", CourseSerializer),
+    )
     def get(self, request):
         queryset = Course.objects.all().order_by("id")
         keyword = request.query_params.get("q")
@@ -36,6 +52,7 @@ class CourseListCreateView(AdminWriteGuardMixin, APIView):
 
         return Response(CourseSerializer(queryset, many=True).data)
 
+    @extend_schema(summary="创建课程", description="管理员创建课程库中的课程基础信息。", request=CourseSerializer, responses=CourseSerializer)
     def post(self, request):
         denied = self.ensure_admin(request)
         if denied:
@@ -49,14 +66,17 @@ class CourseListCreateView(AdminWriteGuardMixin, APIView):
 
 class CourseDetailView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CourseSerializer
 
     def get_object(self, course_id):
         return get_object_or_404(Course, pk=course_id)
 
+    @extend_schema(summary="获取课程详情", description="根据课程 ID 获取单个课程详情。", responses=CourseSerializer)
     def get(self, request, course_id):
         course = self.get_object(course_id)
         return Response(CourseSerializer(course).data)
 
+    @extend_schema(summary="更新课程", description="管理员更新指定课程的基础信息。", request=CourseSerializer, responses=CourseSerializer)
     def put(self, request, course_id):
         denied = self.ensure_admin(request)
         if denied:
@@ -68,6 +88,7 @@ class CourseDetailView(AdminWriteGuardMixin, APIView):
         serializer.save()
         return Response(serializer.data)
 
+    @extend_schema(summary="删除课程", description="管理员删除指定课程。", request=None, responses={204: None})
     def delete(self, request, course_id):
         denied = self.ensure_admin(request)
         if denied:
@@ -80,7 +101,14 @@ class CourseDetailView(AdminWriteGuardMixin, APIView):
 
 class SectionListCreateView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = SectionSerializer
 
+    @extend_schema(
+        summary="获取开课班级列表",
+        description="查询开课班级。支持按学期、课程、教师和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, COURSE_ID_PARAMETER, TEACHER_ID_PARAMETER, KEYWORD_PARAMETER],
+        responses=paginated_response("PaginatedSectionListResponse", SectionSerializer),
+    )
     def get(self, request):
         queryset = Section.objects.select_related("term", "course", "teacher", "teacher__profile").all().order_by("id")
         term_id = request.query_params.get("term_id")
@@ -111,6 +139,7 @@ class SectionListCreateView(AdminWriteGuardMixin, APIView):
 
         return Response(SectionSerializer(queryset, many=True).data)
 
+    @extend_schema(summary="创建开课班级", description="管理员为课程创建具体开课班级。", request=SectionSerializer, responses=SectionSerializer)
     def post(self, request):
         denied = self.ensure_admin(request)
         if denied:
@@ -124,6 +153,7 @@ class SectionListCreateView(AdminWriteGuardMixin, APIView):
 
 class SectionDetailView(AdminWriteGuardMixin, APIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = SectionSerializer
 
     def get_object(self, section_id):
         return get_object_or_404(
@@ -131,10 +161,12 @@ class SectionDetailView(AdminWriteGuardMixin, APIView):
             pk=section_id,
         )
 
+    @extend_schema(summary="获取开课班级详情", description="根据开课班级 ID 获取详情。", responses=SectionSerializer)
     def get(self, request, section_id):
         section = self.get_object(section_id)
         return Response(SectionSerializer(section).data)
 
+    @extend_schema(summary="更新开课班级", description="管理员更新指定开课班级信息。", request=SectionSerializer, responses=SectionSerializer)
     def put(self, request, section_id):
         denied = self.ensure_admin(request)
         if denied:
@@ -146,6 +178,7 @@ class SectionDetailView(AdminWriteGuardMixin, APIView):
         serializer.save()
         return Response(serializer.data)
 
+    @extend_schema(summary="删除开课班级", description="管理员删除指定开课班级。", request=None, responses={204: None})
     def delete(self, request, section_id):
         denied = self.ensure_admin(request)
         if denied:
