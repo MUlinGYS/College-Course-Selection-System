@@ -327,6 +327,62 @@ export function fetchTeacherRoster(sectionId, { paginate = false, page = '', pag
   return apiGet(`/teacher/sections/${sectionId}/roster${query ? `?${query}` : ''}`)
 }
 
+export function fetchTeacherCourseApplications({
+  termId = '',
+  roundId = '',
+  status = '',
+  q = '',
+  paginate = false,
+  page = '',
+  pageSize = '',
+} = {}) {
+  const params = new URLSearchParams()
+  if (termId) params.set('term_id', termId)
+  if (roundId) params.set('round_id', roundId)
+  if (status) params.set('status', status)
+  if (q) params.set('q', q)
+  applyPaginationParams(params, { paginate, page, pageSize })
+  const query = params.toString()
+  return apiGet(`/teacher/course-applications${query ? `?${query}` : ''}`)
+}
+
+export function createTeacherCourseApplication(payload) {
+  return apiPost('/teacher/course-applications', payload)
+}
+
+export function updateTeacherCourseApplication(applicationId, payload) {
+  return apiPut(`/teacher/course-applications/${applicationId}`, payload)
+}
+
+export function deleteTeacherCourseApplication(applicationId) {
+  return apiDelete(`/teacher/course-applications/${applicationId}`)
+}
+
+export function fetchAdminCourseApplications({
+  termId = '',
+  roundId = '',
+  teacherId = '',
+  status = '',
+  q = '',
+  paginate = false,
+  page = '',
+  pageSize = '',
+} = {}) {
+  const params = new URLSearchParams()
+  if (termId) params.set('term_id', termId)
+  if (roundId) params.set('round_id', roundId)
+  if (teacherId) params.set('teacher_id', teacherId)
+  if (status) params.set('status', status)
+  if (q) params.set('q', q)
+  applyPaginationParams(params, { paginate, page, pageSize })
+  const query = params.toString()
+  return apiGet(`/admin/course-applications${query ? `?${query}` : ''}`)
+}
+
+export function reviewCourseApplication(applicationId, payload) {
+  return apiPost(`/admin/course-applications/${applicationId}/review`, payload)
+}
+
 export function fetchEnrollmentRecords({
   roundId = '',
   sectionId = '',

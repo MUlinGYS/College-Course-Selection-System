@@ -12,6 +12,7 @@ const AdminTermsPage = () => import('../pages/admin/AdminTermsPage.vue')
 const AdminRoundsPage = () => import('../pages/admin/AdminRoundsPage.vue')
 const AdminCoursesPage = () => import('../pages/admin/AdminCoursesPage.vue')
 const AdminSectionsPage = () => import('../pages/admin/AdminSectionsPage.vue')
+const AdminCourseApplicationsPage = () => import('../pages/admin/AdminCourseApplicationsPage.vue')
 const AdminEnrollmentsPage = () => import('../pages/admin/AdminEnrollmentsPage.vue')
 const StudentCoursesPage = () => import('../pages/student/StudentCoursesPage.vue')
 const StudentCourseDetailPage = () => import('../pages/student/StudentCourseDetailPage.vue')
@@ -19,6 +20,7 @@ const StudentSelectedPage = () => import('../pages/student/StudentSelectedPage.v
 const StudentConflictsPage = () => import('../pages/student/StudentConflictsPage.vue')
 const StudentTimetablePage = () => import('../pages/student/StudentTimetablePage.vue')
 const TeacherSectionsPage = () => import('../pages/teacher/TeacherSectionsPage.vue')
+const TeacherApplicationsPage = () => import('../pages/teacher/TeacherApplicationsPage.vue')
 const TeacherRosterPage = () => import('../pages/teacher/TeacherRosterPage.vue')
 
 const routes = [
@@ -39,14 +41,41 @@ const routes = [
       { path: 'admin/rounds', name: 'admin-rounds', component: AdminRoundsPage, meta: { requiresAuth: true, roles: ['admin'], title: '轮次管理' } },
       { path: 'admin/courses', name: 'admin-courses', component: AdminCoursesPage, meta: { requiresAuth: true, roles: ['admin'], title: '课程管理' } },
       { path: 'admin/sections', name: 'admin-sections', component: AdminSectionsPage, meta: { requiresAuth: true, roles: ['admin'], title: '开课班级' } },
-      { path: 'admin/enrollments', name: 'admin-enrollments', component: AdminEnrollmentsPage, meta: { requiresAuth: true, roles: ['admin'], title: '选课记录' } },
+      {
+        path: 'admin/course-applications',
+        name: 'admin-course-applications',
+        component: AdminCourseApplicationsPage,
+        meta: { requiresAuth: true, roles: ['admin'], title: '申报审核' },
+      },
+      {
+        path: 'admin/enrollments',
+        name: 'admin-enrollments',
+        component: AdminEnrollmentsPage,
+        meta: { requiresAuth: true, roles: ['admin'], title: '选课记录' },
+      },
       { path: 'student/courses', name: 'student-courses', component: StudentCoursesPage, meta: { requiresAuth: true, roles: ['student'], title: '课程目录' } },
-      { path: 'student/courses/:sectionId', name: 'student-course-detail', component: StudentCourseDetailPage, meta: { requiresAuth: true, roles: ['student'], title: '课程详情' } },
+      {
+        path: 'student/courses/:sectionId',
+        name: 'student-course-detail',
+        component: StudentCourseDetailPage,
+        meta: { requiresAuth: true, roles: ['student'], title: '课程详情' },
+      },
       { path: 'student/selected', name: 'student-selected', component: StudentSelectedPage, meta: { requiresAuth: true, roles: ['student'], title: '我的已选' } },
       { path: 'student/conflicts', name: 'student-conflicts', component: StudentConflictsPage, meta: { requiresAuth: true, roles: ['student'], title: '冲突检查' } },
       { path: 'student/timetable', name: 'student-timetable', component: StudentTimetablePage, meta: { requiresAuth: true, roles: ['student'], title: '我的课表' } },
       { path: 'teacher/sections', name: 'teacher-sections', component: TeacherSectionsPage, meta: { requiresAuth: true, roles: ['teacher'], title: '我的班级' } },
-      { path: 'teacher/sections/:sectionId/roster', name: 'teacher-roster', component: TeacherRosterPage, meta: { requiresAuth: true, roles: ['teacher'], title: '选课名单' } },
+      {
+        path: 'teacher/applications',
+        name: 'teacher-applications',
+        component: TeacherApplicationsPage,
+        meta: { requiresAuth: true, roles: ['teacher'], title: '开课申报' },
+      },
+      {
+        path: 'teacher/sections/:sectionId/roster',
+        name: 'teacher-roster',
+        component: TeacherRosterPage,
+        meta: { requiresAuth: true, roles: ['teacher'], title: '选课名单' },
+      },
     ],
   },
   {

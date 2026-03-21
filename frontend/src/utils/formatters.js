@@ -25,6 +25,12 @@ export const enrollmentStatusOptions = [
   { value: 'dropped', label: '已退' },
 ]
 
+export const courseApplicationStatusOptions = [
+  { value: 'pending', label: '待审核' },
+  { value: 'approved', label: '已通过' },
+  { value: 'rejected', label: '已驳回' },
+]
+
 export function roleLabel(role) {
   return roleOptions.find((item) => item.value === role)?.label || role || '-'
 }
@@ -35,6 +41,10 @@ export function weekdayLabel(weekday) {
 
 export function enrollmentStatusLabel(status) {
   return enrollmentStatusOptions.find((item) => item.value === status)?.label || status || '-'
+}
+
+export function courseApplicationStatusLabel(status) {
+  return courseApplicationStatusOptions.find((item) => item.value === status)?.label || status || '-'
 }
 
 export function formatDate(value) {

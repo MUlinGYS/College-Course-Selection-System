@@ -7,6 +7,7 @@ export const navigationItems = [
       { label: '轮次管理', to: '/admin/rounds', roles: ['admin'] },
       { label: '课程管理', to: '/admin/courses', roles: ['admin'] },
       { label: '开课班级', to: '/admin/sections', roles: ['admin'] },
+      { label: '申报审核', to: '/admin/course-applications', roles: ['admin'] },
       { label: '选课记录', to: '/admin/enrollments', roles: ['admin'] },
     ],
   },
@@ -21,7 +22,10 @@ export const navigationItems = [
   },
   {
     label: '教师',
-    items: [{ label: '我的班级', to: '/teacher/sections', roles: ['teacher'] }],
+    items: [
+      { label: '我的班级', to: '/teacher/sections', roles: ['teacher'] },
+      { label: '开课申报', to: '/teacher/applications', roles: ['teacher'] },
+    ],
   },
   {
     label: '公共',
