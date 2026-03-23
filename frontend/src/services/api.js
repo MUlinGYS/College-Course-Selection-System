@@ -256,9 +256,19 @@ export function deleteCourse(courseId) {
   return apiDelete(`/courses/${courseId}`)
 }
 
-export function fetchSections({ termId = '', courseId = '', teacherId = '', q = '', paginate = false, page = '', pageSize = '' } = {}) {
+export function fetchSections({
+  termId = '',
+  roundId = '',
+  courseId = '',
+  teacherId = '',
+  q = '',
+  paginate = false,
+  page = '',
+  pageSize = '',
+} = {}) {
   const params = new URLSearchParams()
   if (termId) params.set('term_id', termId)
+  if (roundId) params.set('round_id', roundId)
   if (courseId) params.set('course_id', courseId)
   if (teacherId) params.set('teacher_id', teacherId)
   if (q) params.set('q', q)
@@ -312,9 +322,10 @@ export function fetchMyConflicts({ termId = '', paginate = false, page = '', pag
   return apiGet(`/my/conflicts${query ? `?${query}` : ''}`)
 }
 
-export function fetchTeacherSections({ termId = '', paginate = false, page = '', pageSize = '' } = {}) {
+export function fetchTeacherSections({ termId = '', roundId = '', paginate = false, page = '', pageSize = '' } = {}) {
   const params = new URLSearchParams()
   if (termId) params.set('term_id', termId)
+  if (roundId) params.set('round_id', roundId)
   applyPaginationParams(params, { paginate, page, pageSize })
   const query = params.toString()
   return apiGet(`/teacher/sections${query ? `?${query}` : ''}`)

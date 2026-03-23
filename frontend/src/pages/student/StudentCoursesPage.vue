@@ -42,7 +42,7 @@
         <p v-if="activeRound" class="helper-text">
           当前轮次：{{ formatDateTime(activeRound.start_at) }} 至 {{ formatDateTime(activeRound.end_at) }}
         </p>
-        <p v-else class="helper-text">未选择轮次时只能浏览班级，不能直接提交选课。</p>
+        <p v-else class="helper-text">请先选择轮次后查看对应班级。</p>
         <p v-if="message.text" :class="['message', message.type]">{{ message.text }}</p>
       </article>
 
@@ -75,7 +75,7 @@
       <div class="panel-head">
         <div>
           <p class="eyebrow">课程目录</p>
-          <h3>可浏览班级列表</h3>
+          <h3>当前轮次班级列表</h3>
         </div>
         <span class="badge badge-neutral">共 {{ total }} 条</span>
       </div>
@@ -86,6 +86,7 @@
             <tr>
               <th>课程</th>
               <th>班级</th>
+              <th>轮次</th>
               <th>教师</th>
               <th>上课时间</th>
               <th>地点</th>
@@ -98,6 +99,7 @@
             <tr v-for="item in sections" :key="item.id">
               <td>{{ item.course_code }} - {{ item.course_name }}</td>
               <td>{{ item.name }}</td>
+              <td>{{ item.round_name || '-' }}</td>
               <td>{{ item.teacher_name }}</td>
               <td>{{ joinSectionSchedule(item) }}</td>
               <td>{{ item.location || '-' }}</td>
@@ -107,7 +109,9 @@
                   <span :class="['badge', resolveSectionState(item).badgeClass]">
                     {{ resolveSectionState(item).label }}
                   </span>
-                  <span v-if="resolveSectionState(item).reason" class="action-note">{{ resolveSectionState(item).reason }}</span>
+                  <span v-if="resolveSectionState(item).reason" class="action-note">
+                    {{ resolveSectionState(item).reason }}
+                  </span>
                 </div>
               </td>
               <td class="actions">
@@ -123,7 +127,7 @@
               </td>
             </tr>
             <tr v-if="!sections.length">
-              <td class="table-empty" colspan="8">当前筛选条件下没有班级数据。</td>
+              <td class="table-empty" colspan="9">当前筛选条件下没有班级数据。</td>
             </tr>
           </tbody>
         </table>
@@ -186,7 +190,7 @@ const draftAvailableRounds = computed(() =>
 const appliedAvailableRounds = computed(() =>
   appliedFilters.termId ? rounds.value.filter((item) => String(item.term) === String(appliedFilters.termId)) : rounds.value,
 )
-const activeRound = computed(() => appliedAvailableRounds.value.find((item) => String(item.id) === appliedRoundId.value))
+const activeRound = computed(() => appliedAvailableRounds.value.find((item) => String(item.id) === appliedRoundId.value) || null)
 const enrolledSectionIds = computed(() => new Set(myEnrollments.value.map((item) => item.section_id)))
 const currentRoundEnrollmentCount = computed(() => {
   if (!appliedRoundId.value) return 0
@@ -213,9 +217,10 @@ function pickDefaultRound(roundList, termId = '') {
 function getAvailabilityReason(section) {
   if (enrolledSectionIds.value.has(section.id)) return '你已选过该班级'
   if (!appliedRoundId.value || !activeRound.value) return '请先选择轮次并应用筛选'
+  if (!section.round) return '该班级尚未绑定轮次'
   if (!isRoundOpen(activeRound.value)) return '当前轮次未开放'
   if (activeRound.value.target_scope === 'teacher') return '当前轮次不面向学生'
-  if (String(section.term) !== String(activeRound.value.term)) return '当前班级不在所选轮次学期'
+  if (String(section.round) !== String(activeRound.value.id)) return '当前班级不属于所选轮次'
   if (
     Number(activeRound.value.max_courses || 0) > 0 &&
     currentRoundEnrollmentCount.value >= Number(activeRound.value.max_courses || 0)
@@ -263,27 +268,15 @@ async function loadPageData() {
 
   try {
     await withPageLoading(async () => {
-      const [roundList, sectionList, enrollmentList] = await Promise.all([
-        fetchRounds(),
-        fetchSections({
-          termId: appliedFilters.termId,
-          q: appliedFilters.q,
-          paginate: true,
-          page: currentPage.value,
-          pageSize: pageSize.value,
-        }),
-        fetchMyEnrollments({ termId: appliedFilters.termId }),
-      ])
-
+      const [roundList, enrollmentList] = await Promise.all([fetchRounds(), fetchMyEnrollments({ termId: appliedFilters.termId })])
       rounds.value = roundList
-      const { results, count } = normalizeListResponse(sectionList)
-      sections.value = results
-      total.value = count
       myEnrollments.value = enrollmentList
 
-      if (!appliedAvailableRounds.value.some((item) => String(item.id) === appliedRoundId.value)) {
+      let effectiveRoundId = appliedRoundId.value
+      if (!appliedAvailableRounds.value.some((item) => String(item.id) === effectiveRoundId)) {
         const defaultRound = pickDefaultRound(rounds.value, appliedFilters.termId)
-        appliedRoundId.value = defaultRound ? String(defaultRound.id) : ''
+        effectiveRoundId = defaultRound ? String(defaultRound.id) : ''
+        appliedRoundId.value = effectiveRoundId
       }
 
       if (!draftAvailableRounds.value.some((item) => String(item.id) === draftRoundId.value)) {
@@ -291,8 +284,27 @@ async function loadPageData() {
       }
 
       if (!draftRoundId.value && draftFilters.termId === appliedFilters.termId) {
-        draftRoundId.value = appliedRoundId.value
+        draftRoundId.value = effectiveRoundId
       }
+
+      if (!effectiveRoundId) {
+        sections.value = []
+        total.value = 0
+        return
+      }
+
+      const sectionList = await fetchSections({
+        termId: appliedFilters.termId,
+        roundId: effectiveRoundId,
+        q: appliedFilters.q,
+        paginate: true,
+        page: currentPage.value,
+        pageSize: pageSize.value,
+      })
+
+      const { results, count } = normalizeListResponse(sectionList)
+      sections.value = results
+      total.value = count
     })
   } catch (error) {
     message.text = error.message || '加载课程目录失败。'
@@ -372,4 +384,3 @@ onMounted(async () => {
   }
 })
 </script>
-

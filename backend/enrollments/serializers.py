@@ -103,6 +103,8 @@ class TeacherSectionSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     term_id = serializers.IntegerField()
     term_name = serializers.CharField()
+    round_id = serializers.IntegerField(allow_null=True)
+    round_name = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     course_id = serializers.IntegerField()
     course_code = serializers.CharField()
     course_name = serializers.CharField()

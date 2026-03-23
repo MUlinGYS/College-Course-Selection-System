@@ -197,15 +197,16 @@ def resolve_course_for_application(application):
 
 def create_section_for_application(application, course):
     if Section.objects.filter(
-        term=application.term,
+        round=application.round,
         course=course,
         name=application.section_name,
     ).exists():
-        raise serializers.ValidationError({"message": "该学期下已存在同课程同班级名称的开课记录"})
+        raise serializers.ValidationError({"message": "该轮次下已存在同课程同班级名称的开课记录"})
 
     serializer = SectionSerializer(
         data={
             "term": application.term_id,
+            "round": application.round_id,
             "course": course.id,
             "teacher": application.teacher_id,
             "name": application.section_name,

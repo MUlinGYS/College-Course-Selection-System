@@ -9,11 +9,7 @@
         <RouterLink class="ghost-btn link-btn" to="/student/courses">返回课程目录</RouterLink>
       </div>
 
-      <div v-if="loading" class="placeholder-state">
-        <strong>正在加载班级详情...</strong>
-      </div>
-
-      <template v-else>
+      <template v-if="!loading">
         <div class="detail-grid">
           <div class="detail-item">
             <span class="detail-label">班级</span>
@@ -39,21 +35,16 @@
             <span class="detail-label">学期</span>
             <strong>{{ section.term_name || '-' }}</strong>
           </div>
+          <div class="detail-item">
+            <span class="detail-label">轮次</span>
+            <strong>{{ section.round_name || '-' }}</strong>
+          </div>
         </div>
 
         <div class="action-card">
-          <label>
-            轮次
-            <select v-model="selectedRoundId">
-              <option value="">请选择轮次</option>
-              <option v-for="round in rounds" :key="round.id" :value="String(round.id)">
-                {{ round.name }}（{{ roundScopeLabel(round.target_scope) }}）
-              </option>
-            </select>
-          </label>
-
           <p v-if="activeRound" class="helper-text">
-            轮次时间：{{ formatDateTime(activeRound.start_at) }} 至 {{ formatDateTime(activeRound.end_at) }}
+            绑定轮次：{{ activeRound.name }}（{{ roundScopeLabel(activeRound.target_scope) }}），
+            {{ formatDateTime(activeRound.start_at) }} 至 {{ formatDateTime(activeRound.end_at) }}
           </p>
           <p v-if="availabilityReason" class="message error">{{ availabilityReason }}</p>
 
@@ -74,37 +65,36 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
-import { createEnrollment, fetchMyEnrollments, fetchRounds, fetchSection } from '../../services/api'
+import { createEnrollment, fetchMyEnrollments, fetchRound, fetchSection } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatDateTime, joinSectionSchedule, roundScopeOptions } from '../../utils/formatters'
 
 const route = useRoute()
 
 const section = ref({})
-const rounds = ref([])
+const activeRound = ref(null)
 const myEnrollments = ref([])
 const loading = ref(false)
 const submitting = ref(false)
-const selectedRoundId = ref('')
 
 const message = reactive({
   text: '',
   type: 'success',
 })
 
-const activeRound = computed(() => rounds.value.find((item) => String(item.id) === selectedRoundId.value))
 const isEnrolled = computed(() => myEnrollments.value.some((item) => item.section_id === Number(route.params.sectionId)))
 const currentRoundEnrollmentCount = computed(() => {
-  if (!selectedRoundId.value) return 0
-  return myEnrollments.value.filter((item) => String(item.round) === selectedRoundId.value).length
+  if (!activeRound.value) return 0
+  return myEnrollments.value.filter((item) => String(item.round) === String(activeRound.value.id)).length
 })
 
 const availabilityReason = computed(() => {
   if (isEnrolled.value) return '你已选过该班级'
-  if (!selectedRoundId.value || !activeRound.value) return '请先选择轮次'
+  if (!section.value.round) return '该班级尚未绑定轮次'
+  if (!activeRound.value) return '轮次信息加载失败'
   if (!isRoundOpen(activeRound.value)) return '当前轮次未开放'
   if (activeRound.value.target_scope === 'teacher') return '当前轮次不面向学生'
-  if (String(section.value.term) !== String(activeRound.value.term)) return '当前班级不在所选轮次学期'
+  if (String(section.value.round) !== String(activeRound.value.id)) return '当前班级不属于所绑定轮次'
   if (
     Number(activeRound.value.max_courses || 0) > 0 &&
     currentRoundEnrollmentCount.value >= Number(activeRound.value.max_courses || 0)
@@ -138,17 +128,18 @@ async function loadDetail() {
   message.text = ''
 
   try {
-    const detail = await withPageLoading(async () => fetchSection(route.params.sectionId))
-    section.value = detail
+    await withPageLoading(async () => {
+      const detail = await fetchSection(route.params.sectionId)
+      section.value = detail
 
-    const [roundList, enrollmentList] = await withPageLoading(async () =>
-      Promise.all([fetchRounds({ termId: detail.term }), fetchMyEnrollments({ termId: detail.term })]),
-    )
+      const [roundDetail, enrollmentList] = await Promise.all([
+        detail.round ? fetchRound(detail.round) : Promise.resolve(null),
+        fetchMyEnrollments({ termId: detail.term }),
+      ])
 
-    rounds.value = roundList
-    myEnrollments.value = enrollmentList
-    const defaultRound = roundList.find(isRoundOpen) || roundList[0]
-    selectedRoundId.value = defaultRound ? String(defaultRound.id) : ''
+      activeRound.value = roundDetail
+      myEnrollments.value = enrollmentList
+    })
   } catch (error) {
     message.text = error.message || '加载班级详情失败。'
     message.type = 'error'
@@ -169,7 +160,7 @@ async function enroll() {
 
   try {
     await createEnrollment({
-      round_id: Number(selectedRoundId.value),
+      round_id: Number(section.value.round),
       section_id: Number(route.params.sectionId),
     })
     await loadDetail()

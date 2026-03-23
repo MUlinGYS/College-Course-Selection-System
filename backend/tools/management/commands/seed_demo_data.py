@@ -1,4 +1,4 @@
-# 初始化基础演示数据，用于管理员、教师、学生三角色联调。
+# 初始化基础演示数据，供管理员、教师、学生三种角色联调使用。
 from datetime import date, time, timedelta
 
 from django.contrib.auth.models import User
@@ -99,7 +99,7 @@ class Command(BaseCommand):
             allow_drop=False,
             enabled=False,
         )
-        self._upsert_round(
+        next_round = self._upsert_round(
             term=next_term,
             name="下学期预设轮次",
             start_at=now + timedelta(days=120),
@@ -131,6 +131,7 @@ class Command(BaseCommand):
 
         section_python = self._upsert_section(
             term=current_term,
+            round_instance=round_open,
             course=course_python,
             teacher=teacher_one,
             name="1班",
@@ -142,6 +143,7 @@ class Command(BaseCommand):
         )
         section_db = self._upsert_section(
             term=current_term,
+            round_instance=round_open,
             course=course_db,
             teacher=teacher_one,
             name="1班",
@@ -153,6 +155,7 @@ class Command(BaseCommand):
         )
         section_math = self._upsert_section(
             term=current_term,
+            round_instance=round_open,
             course=course_math,
             teacher=teacher_two,
             name="1班",
@@ -161,6 +164,19 @@ class Command(BaseCommand):
             start_time=time(14, 0),
             end_time=time(15, 40),
             location="明理楼 B-105",
+        )
+
+        self._upsert_section(
+            term=next_term,
+            round_instance=next_round,
+            course=course_python,
+            teacher=teacher_one,
+            name="1班",
+            capacity=40,
+            weekday=2,
+            start_time=time(8, 0),
+            end_time=time(9, 40),
+            location="博学楼 A-201",
         )
 
         self._upsert_enrollment(student_one, round_open, section_python, Enrollment.STATUS_ENROLLED)
@@ -175,6 +191,7 @@ class Command(BaseCommand):
         self.stdout.write("学生 zhang_xiaoming / Student@123456")
         self.stdout.write("学生 li_hua_student / Student@123456")
         self.stdout.write(f"当前开放轮次：{round_open.name}（{current_term.name}）")
+        self.stdout.write(f"下学期轮次：{next_round.name}（{next_term.name}）")
 
     def _upsert_user(
         self,
@@ -250,12 +267,13 @@ class Command(BaseCommand):
         self.stdout.write(f"{'创建' if created else '更新'}课程：{code}")
         return course
 
-    def _upsert_section(self, *, term, course, teacher, name, capacity, weekday, start_time, end_time, location):
+    def _upsert_section(self, *, term, round_instance, course, teacher, name, capacity, weekday, start_time, end_time, location):
         section, created = Section.objects.update_or_create(
-            term=term,
+            round=round_instance,
             course=course,
             name=name,
             defaults={
+                "term": term,
                 "teacher": teacher,
                 "capacity": capacity,
                 "weekday": weekday,
@@ -264,7 +282,7 @@ class Command(BaseCommand):
                 "location": location,
             },
         )
-        self.stdout.write(f"{'创建' if created else '更新'}班级：{course.code} / {name}")
+        self.stdout.write(f"{'创建' if created else '更新'}班级：{course.code} / {name} / {round_instance.name}")
         return section
 
     def _upsert_enrollment(self, student, round_instance, section, status_value):

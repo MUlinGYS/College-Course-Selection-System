@@ -1,9 +1,8 @@
 from django.contrib.auth.models import User
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
-from rest_framework import serializers
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -64,7 +63,7 @@ class RefreshView(TokenRefreshView):
 class LogoutView(APIView):
     @extend_schema(
         summary="退出登录",
-        description="前端调用的退出登录接口，当前仅返回成功标记，由前端自行清理本地令牌。",
+        description="前端调用的退出登录接口，当前仅返回成功标记，由前端清理本地令牌。",
         request=None,
         responses=inline_serializer(
             name="LogoutResponse",
@@ -78,14 +77,14 @@ class LogoutView(APIView):
 class MeView(APIView):
     serializer_class = UserSerializer
 
-    @extend_schema(summary="获取当前用户信息", description="返回当前登录用户的基本信息和角色资料。", responses=UserSerializer)
+    @extend_schema(summary="获取当前用户信息", description="返回当前登录用户的基础信息和角色资料。", responses=UserSerializer)
     def get(self, request):
         ensure_user_profile(request.user)
         return Response(UserSerializer(request.user).data)
 
     @extend_schema(
         summary="更新当前用户资料",
-        description="更新当前登录用户可自行维护的资料字段，如邮箱、姓名、电话和部门。",
+        description="更新当前登录用户可自行维护的资料字段。",
         request=SelfProfileUpdateSerializer,
         responses=UserSerializer,
     )
@@ -122,15 +121,12 @@ class UserListCreateView(APIView):
     serializer_class = UserSerializer
 
     def _serialize_users(self, queryset_or_page):
-        users = list(queryset_or_page)
-        for user in users:
-            ensure_user_profile(user)
-        return UserSerializer(users, many=True).data
+        return UserSerializer(list(queryset_or_page), many=True).data
 
     @extend_schema(
         operation_id="users_list",
         summary="获取用户列表",
-        description="管理员查询系统用户。支持按角色和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        description="管理员查询系统用户，支持按角色和关键字筛选。",
         parameters=PAGINATION_PARAMETERS + [ROLE_PARAMETER, KEYWORD_PARAMETER],
         responses=paginated_response("PaginatedUserListResponse", UserSerializer),
     )
@@ -176,8 +172,10 @@ class UserDetailView(APIView):
     permission_classes = [IsAdmin]
     serializer_class = UserSerializer
 
+    DELETE_PROTECTED_MESSAGE = "该用户已关联开课班级、申报或审核记录，无法直接删除，请先解除关联数据"
+
     def get_object(self, user_id):
-        user = get_object_or_404(User, pk=user_id)
+        user = get_object_or_404(User.objects.select_related("profile"), pk=user_id)
         ensure_user_profile(user)
         return user
 
@@ -208,5 +206,8 @@ class UserDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user.delete()
+        try:
+            user.delete()
+        except ProtectedError:
+            return Response({"message": self.DELETE_PROTECTED_MESSAGE}, status=status.HTTP_409_CONFLICT)
         return Response(status=status.HTTP_204_NO_CONTENT)

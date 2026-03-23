@@ -18,6 +18,14 @@
             </select>
           </label>
 
+          <label>
+            轮次
+            <select v-model="roundId" :disabled="!availableRounds.length">
+              <option value="">{{ availableRounds.length ? '全部轮次' : '无轮次' }}</option>
+              <option v-for="round in availableRounds" :key="round.id" :value="String(round.id)">{{ round.name }}</option>
+            </select>
+          </label>
+
           <div class="toolbar">
             <button class="primary-btn" :disabled="loading" type="submit">应用筛选</button>
             <button class="ghost-btn" type="button" @click="resetFilter">重置</button>
@@ -66,6 +74,7 @@
           <thead>
             <tr>
               <th>学期</th>
+              <th>轮次</th>
               <th>课程</th>
               <th>班级</th>
               <th>上课时间</th>
@@ -78,6 +87,7 @@
           <tbody>
             <tr v-for="item in sections" :key="item.id">
               <td>{{ item.term_name }}</td>
+              <td>{{ item.round_name || '-' }}</td>
               <td>{{ item.course_code }} - {{ item.course_name }}</td>
               <td>{{ item.name }}</td>
               <td>{{ weekdayLabel(item.weekday) }} {{ formatTime(item.start_time) }}-{{ formatTime(item.end_time) }}</td>
@@ -89,7 +99,7 @@
               </td>
             </tr>
             <tr v-if="!sections.length">
-              <td class="table-empty" colspan="8">暂无授课班级。</td>
+              <td class="table-empty" colspan="9">暂无授课班级。</td>
             </tr>
           </tbody>
         </table>
@@ -111,18 +121,20 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import ExpandablePanel from '../../components/ExpandablePanel.vue'
-import { fetchTeacherSections, fetchTerms, normalizeListResponse } from '../../services/api'
+import { fetchRounds, fetchTeacherSections, fetchTerms, normalizeListResponse } from '../../services/api'
 import { withPageLoading } from '../../services/pageLoading'
 import { formatTime, weekdayLabel } from '../../utils/formatters'
 
 const terms = ref([])
+const rounds = ref([])
 const sections = ref([])
 const loading = ref(false)
 const termId = ref('')
+const roundId = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -132,12 +144,17 @@ const message = reactive({
   type: 'success',
 })
 
+const availableRounds = computed(() =>
+  termId.value ? rounds.value.filter((item) => String(item.term) === String(termId.value)) : rounds.value,
+)
 const totalStudents = computed(() => sections.value.reduce((sum, item) => sum + Number(item.enrolled_count || 0), 0))
 const totalCapacity = computed(() => sections.value.reduce((sum, item) => sum + Number(item.capacity || 0), 0))
 
-async function loadTermsOnly() {
+async function loadBaseData() {
   await withPageLoading(async () => {
-    terms.value = await fetchTerms()
+    const [termList, roundList] = await Promise.all([fetchTerms(), fetchRounds()])
+    terms.value = termList
+    rounds.value = roundList
   })
 }
 
@@ -149,6 +166,7 @@ async function loadSections() {
     await withPageLoading(async () => {
       const response = await fetchTeacherSections({
         termId: termId.value,
+        roundId: roundId.value,
         paginate: true,
         page: currentPage.value,
         pageSize: pageSize.value,
@@ -172,6 +190,7 @@ async function handleSearch() {
 
 function resetFilter() {
   termId.value = ''
+  roundId.value = ''
   currentPage.value = 1
   loadSections()
 }
@@ -181,9 +200,18 @@ function handlePageChange(page) {
   loadSections()
 }
 
+watch(
+  () => termId.value,
+  () => {
+    if (!availableRounds.value.some((item) => String(item.id) === roundId.value)) {
+      roundId.value = ''
+    }
+  },
+)
+
 onMounted(async () => {
   try {
-    await loadTermsOnly()
+    await loadBaseData()
     await loadSections()
   } catch (error) {
     message.text = error.message || '初始化教师班级页失败。'
@@ -191,4 +219,3 @@ onMounted(async () => {
   }
 })
 </script>
-

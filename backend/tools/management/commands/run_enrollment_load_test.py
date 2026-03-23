@@ -113,20 +113,6 @@ class Command(BaseCommand):
             },
         )
 
-        section, _ = Section.objects.update_or_create(
-            term=term,
-            course=course,
-            name="压测班",
-            defaults={
-                "teacher": teacher,
-                "capacity": max(user_count * 2, 500),
-                "weekday": 6,
-                "start_time": "19:00",
-                "end_time": "20:40",
-                "location": "性能测试教室",
-            },
-        )
-
         round_instance, _ = Round.objects.update_or_create(
             term=term,
             name="并发压测轮次",
@@ -137,6 +123,21 @@ class Command(BaseCommand):
                 "max_courses": 1,
                 "allow_drop": True,
                 "enabled": True,
+            },
+        )
+
+        section, _ = Section.objects.update_or_create(
+            round=round_instance,
+            course=course,
+            name="压测班",
+            defaults={
+                "term": term,
+                "teacher": teacher,
+                "capacity": max(user_count * 2, 500),
+                "weekday": 6,
+                "start_time": "19:00",
+                "end_time": "20:40",
+                "location": "性能测试教室",
             },
         )
 
@@ -261,7 +262,6 @@ class Command(BaseCommand):
                 timeout=timeout,
             )
             elapsed_ms = (time.perf_counter() - started) * 1000
-            payload = {}
             try:
                 payload = response.json()
             except ValueError:

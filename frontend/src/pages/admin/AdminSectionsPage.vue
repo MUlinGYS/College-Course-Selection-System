@@ -19,6 +19,14 @@
           </label>
 
           <label>
+            轮次
+            <select v-model="filters.roundId" :disabled="!filterRounds.length">
+              <option value="">{{ filterRounds.length ? '全部轮次' : '无轮次' }}</option>
+              <option v-for="round in filterRounds" :key="round.id" :value="String(round.id)">{{ round.name }}</option>
+            </select>
+          </label>
+
+          <label>
             课程
             <select v-model="filters.courseId">
               <option value="">全部课程</option>
@@ -67,6 +75,15 @@
               <option v-for="term in terms" :key="term.id" :value="String(term.id)">{{ term.name }}</option>
             </select>
             <span v-if="fieldErrors.term" class="field-error">{{ fieldErrors.term }}</span>
+          </label>
+
+          <label>
+            轮次
+            <select v-model="form.round" :disabled="!formRounds.length" required>
+              <option value="" disabled>{{ formRounds.length ? '请选择轮次' : '无轮次' }}</option>
+              <option v-for="round in formRounds" :key="round.id" :value="String(round.id)">{{ round.name }}</option>
+            </select>
+            <span v-if="fieldErrors.round" class="field-error">{{ fieldErrors.round }}</span>
           </label>
 
           <label>
@@ -154,6 +171,7 @@
             <tr>
               <th>ID</th>
               <th>学期</th>
+              <th>轮次</th>
               <th>课程</th>
               <th>班级</th>
               <th>教师</th>
@@ -167,6 +185,7 @@
             <tr v-for="item in sections" :key="item.id">
               <td>{{ item.id }}</td>
               <td>{{ item.term_name }}</td>
+              <td>{{ item.round_name || '-' }}</td>
               <td>{{ item.course_code }} - {{ item.course_name }}</td>
               <td>{{ item.name }}</td>
               <td>{{ item.teacher_name }}</td>
@@ -179,7 +198,7 @@
               </td>
             </tr>
             <tr v-if="!sections.length">
-              <td class="table-empty" colspan="9">当前筛选条件下没有班级数据。</td>
+              <td class="table-empty" colspan="10">当前筛选条件下没有班级数据。</td>
             </tr>
           </tbody>
         </table>
@@ -201,13 +220,14 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import ExpandablePanel from '../../components/ExpandablePanel.vue'
 import {
   createSection,
   deleteSection,
   fetchCourses,
+  fetchRounds,
   fetchSections,
   fetchTerms,
   fetchUsers,
@@ -218,6 +238,7 @@ import { withPageLoading } from '../../services/pageLoading'
 import { joinSectionSchedule, weekdayOptions } from '../../utils/formatters'
 
 const terms = ref([])
+const rounds = ref([])
 const courses = ref([])
 const teachers = ref([])
 const sections = ref([])
@@ -230,6 +251,7 @@ const total = ref(0)
 
 const filters = reactive({
   termId: '',
+  roundId: '',
   courseId: '',
   teacherId: '',
   q: '',
@@ -243,9 +265,17 @@ const message = reactive({
 const form = reactive(createEmptyForm())
 const fieldErrors = reactive(createEmptyErrors())
 
+const filterRounds = computed(() =>
+  filters.termId ? rounds.value.filter((item) => String(item.term) === filters.termId) : rounds.value,
+)
+const formRounds = computed(() =>
+  form.term ? rounds.value.filter((item) => String(item.term) === form.term) : [],
+)
+
 function createEmptyForm() {
   return {
     term: '',
+    round: '',
     course: '',
     teacher: '',
     name: '',
@@ -260,6 +290,7 @@ function createEmptyForm() {
 function createEmptyErrors() {
   return {
     term: '',
+    round: '',
     course: '',
     teacher: '',
     name: '',
@@ -278,11 +309,12 @@ function assignForm(payload) {
 }
 
 async function loadBaseData() {
-  const [termList, courseList, teacherList] = await withPageLoading(async () =>
-    Promise.all([fetchTerms(), fetchCourses(), fetchUsers({ role: 'teacher' })]),
+  const [termList, roundList, courseList, teacherList] = await withPageLoading(async () =>
+    Promise.all([fetchTerms(), fetchRounds(), fetchCourses(), fetchUsers({ role: 'teacher' })]),
   )
 
   terms.value = termList
+  rounds.value = roundList
   courses.value = courseList
   teachers.value = teacherList
 }
@@ -317,6 +349,7 @@ async function handleSearch() {
 
 function resetFilters() {
   filters.termId = ''
+  filters.roundId = ''
   filters.courseId = ''
   filters.teacherId = ''
   filters.q = ''
@@ -333,6 +366,7 @@ function startEdit(section) {
   editingId.value = section.id
   assignForm({
     term: String(section.term),
+    round: section.round ? String(section.round) : '',
     course: String(section.course),
     teacher: String(section.teacher),
     name: section.name,
@@ -356,34 +390,14 @@ function resetForm() {
 function validateForm() {
   clearFieldErrors()
 
-  if (!form.term) {
-    fieldErrors.term = '必须选择学期。'
-  }
-
-  if (!form.course) {
-    fieldErrors.course = '必须选择课程。'
-  }
-
-  if (!form.teacher) {
-    fieldErrors.teacher = '必须选择教师。'
-  }
-
-  if (!form.name.trim()) {
-    fieldErrors.name = '班级名称不能为空。'
-  }
-
-  if (Number(form.capacity) < 0) {
-    fieldErrors.capacity = '容量不能小于 0。'
-  }
-
-  if (!form.start_time) {
-    fieldErrors.start_time = '开始时间不能为空。'
-  }
-
-  if (!form.end_time) {
-    fieldErrors.end_time = '结束时间不能为空。'
-  }
-
+  if (!form.term) fieldErrors.term = '必须选择学期。'
+  if (!form.round) fieldErrors.round = '必须选择轮次。'
+  if (!form.course) fieldErrors.course = '必须选择课程。'
+  if (!form.teacher) fieldErrors.teacher = '必须选择教师。'
+  if (!form.name.trim()) fieldErrors.name = '班级名称不能为空。'
+  if (Number(form.capacity) < 0) fieldErrors.capacity = '容量不能小于 0。'
+  if (!form.start_time) fieldErrors.start_time = '开始时间不能为空。'
+  if (!form.end_time) fieldErrors.end_time = '结束时间不能为空。'
   if (form.start_time && form.end_time && form.end_time <= form.start_time) {
     fieldErrors.end_time = '结束时间必须晚于开始时间。'
   }
@@ -400,6 +414,7 @@ function validateForm() {
 function buildPayload() {
   return {
     term: Number(form.term),
+    round: Number(form.round),
     course: Number(form.course),
     teacher: Number(form.teacher),
     name: form.name.trim(),
@@ -444,12 +459,8 @@ async function removeSection(section) {
 
   try {
     await deleteSection(section.id)
-    if (editingId.value === section.id) {
-      resetForm()
-    }
-    if (sections.value.length === 1 && currentPage.value > 1) {
-      currentPage.value -= 1
-    }
+    if (editingId.value === section.id) resetForm()
+    if (sections.value.length === 1 && currentPage.value > 1) currentPage.value -= 1
     message.text = '班级删除成功。'
     message.type = 'success'
     await loadSections()
@@ -458,6 +469,24 @@ async function removeSection(section) {
     message.type = 'error'
   }
 }
+
+watch(
+  () => filters.termId,
+  () => {
+    if (!filterRounds.value.some((item) => String(item.id) === filters.roundId)) {
+      filters.roundId = ''
+    }
+  },
+)
+
+watch(
+  () => form.term,
+  () => {
+    if (!formRounds.value.some((item) => String(item.id) === form.round)) {
+      form.round = ''
+    }
+  },
+)
 
 onMounted(async () => {
   try {

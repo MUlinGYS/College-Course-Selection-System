@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
@@ -55,7 +56,17 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
     def _profile(self, obj):
-        return ensure_user_profile(obj)
+        cache = self.context.setdefault("_profile_cache", {})
+        if obj.pk in cache:
+            return cache[obj.pk]
+
+        try:
+            profile = obj.profile
+        except ObjectDoesNotExist:
+            profile = ensure_user_profile(obj)
+
+        cache[obj.pk] = profile
+        return profile
 
     def get_role(self, obj) -> str:
         return self._profile(obj).role

@@ -107,10 +107,11 @@ class Command(BaseCommand):
         )
 
         full_section, _ = Section.objects.update_or_create(
-            term=term,
+            round=open_round,
             course=full_course,
             name="1班",
             defaults={
+                "term": term,
                 "teacher": teacher,
                 "capacity": 1,
                 "weekday": 5,
@@ -120,10 +121,11 @@ class Command(BaseCommand):
             },
         )
         closed_section, _ = Section.objects.update_or_create(
-            term=term,
+            round=closed_round,
             course=closed_course,
             name="1班",
             defaults={
+                "term": term,
                 "teacher": teacher,
                 "capacity": 10,
                 "weekday": 5,
@@ -289,5 +291,5 @@ class Command(BaseCommand):
     def _expect_timetable_contains(self, timetable, section_id, expected, label):
         found = any(item.get("section_id") == section_id for item in timetable)
         if found != expected:
-            raise CommandError(f"{label}失败：期望是否包含 section_id={section_id} 为 {expected}，实际 {found}")
+            raise CommandError(f"{label}失败：期望 section_id={section_id} 是否存在为 {expected}，实际为 {found}")
         self.stdout.write(self.style.SUCCESS(f"{label}通过"))

@@ -30,6 +30,11 @@ class Section(models.Model):
     ]
 
     term = models.ForeignKey("rounds.Term", on_delete=models.CASCADE, related_name="sections")
+    round = models.ForeignKey(
+        "rounds.Round",
+        on_delete=models.CASCADE,
+        related_name="sections",
+    )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sections")
     teacher = models.ForeignKey(User, on_delete=models.PROTECT, related_name="teaching_sections")
     name = models.CharField(max_length=100)
@@ -44,10 +49,10 @@ class Section(models.Model):
     class Meta:
         db_table = "sections"
         ordering = ["-id"]
-        unique_together = [("term", "course", "name")]
+        unique_together = [("round", "course", "name")]
         indexes = [
-            models.Index(fields=["term", "course"], name="section_term_course_idx"),
-            models.Index(fields=["term", "teacher"], name="section_term_teacher_idx"),
+            models.Index(fields=["round", "course"], name="section_round_course_idx"),
+            models.Index(fields=["round", "teacher"], name="section_round_teacher_idx"),
             models.Index(fields=["term", "weekday", "start_time"], name="section_term_schedule_idx"),
         ]
 

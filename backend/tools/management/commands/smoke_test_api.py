@@ -27,12 +27,15 @@ class Command(BaseCommand):
         self._expect_status(student.get("/api/my/conflicts", format="json"), 200, "学生获取冲突检查结果")
         self._expect_status(student.get("/api/my/timetable", format="json"), 200, "学生获取我的课表")
 
-        current_round = Round.objects.filter(enabled=True).order_by("id").first()
+        current_round = Round.objects.filter(enabled=True, target_scope=Round.SCOPE_STUDENT).order_by("id").first()
         if not current_round:
-            raise CommandError("没有找到启用中的轮次，无法执行学生选课测试。")
+            raise CommandError("没有找到启用中的学生轮次，无法执行学生选课测试。")
 
-        conflict_section = Section.objects.get(course__code="DB202")
-        success_section = Section.objects.get(course__code="MA203")
+        try:
+            conflict_section = Section.objects.get(course__code="DB202", round=current_round)
+            success_section = Section.objects.get(course__code="MA203", round=current_round)
+        except Section.DoesNotExist as exc:
+            raise CommandError(f"冒烟测试缺少轮次绑定班级：{exc}") from exc
 
         existing_success = Enrollment.objects.filter(
             student__username="zhang_xiaoming",

@@ -20,7 +20,7 @@ COURSE_CATALOG = [
     ("CS204", "软件工程", 3, "讲解需求分析、设计、测试与维护。"),
     ("CS205", "Web 应用开发", 3, "面向前后端分离场景的开发实践。"),
     ("CS206", "面向对象程序设计", 3, "强化类、继承、多态等编程思想。"),
-    ("CS207", "Python 高级开发", 3, "聚焦 Python 工程化与框架实践。"),
+    ("CS207", "Python 高级开发", 3, "聚焦 Python 工程化与框架实战。"),
     ("CS208", "Java 程序设计", 3, "面向企业开发的 Java 基础课程。"),
     ("CS209", "算法设计与分析", 4, "常见算法思想与复杂度分析。"),
     ("CS210", "人工智能导论", 3, "介绍 AI 基础概念与典型应用。"),
@@ -43,16 +43,16 @@ COURSE_CATALOG = [
 TEACHER_PROFILES = [
     ("zhao_jing_teacher", "赵静", "T2026101", "计算机学院"),
     ("sun_bo_teacher", "孙博", "T2026102", "计算机学院"),
-    ("he_qing_teacher", "何青", "T2026103", "软件学院"),
-    ("zhou_nan_teacher", "周楠", "T2026104", "软件学院"),
-    ("liang_yu_teacher", "梁宇", "T2026105", "数据科学学院"),
-    ("guo_min_teacher", "郭敏", "T2026106", "数据科学学院"),
-    ("deng_fei_teacher", "邓飞", "T2026107", "人工智能学院"),
-    ("yan_lu_teacher", "闫璐", "T2026108", "人工智能学院"),
-    ("qian_hui_teacher", "钱慧", "T2026109", "数学学院"),
-    ("wu_jie_teacher", "吴杰", "T2026110", "数学学院"),
-    ("feng_xin_teacher", "冯鑫", "T2026111", "信息工程学院"),
-    ("cao_ning_teacher", "曹宁", "T2026112", "信息工程学院"),
+    ("he_qing_teacher", "何青", "软件学院"),
+    ("zhou_nan_teacher", "周楠", "软件学院"),
+    ("liang_yu_teacher", "梁宇", "数据科学学院"),
+    ("guo_min_teacher", "郭敏", "数据科学学院"),
+    ("deng_fei_teacher", "邓飞", "人工智能学院"),
+    ("yan_lu_teacher", "闫璐", "人工智能学院"),
+    ("qian_hui_teacher", "钱慧", "数学学院"),
+    ("wu_jie_teacher", "吴杰", "数学学院"),
+    ("feng_xin_teacher", "冯鑫", "信息工程学院"),
+    ("cao_ning_teacher", "曹宁", "信息工程学院"),
 ]
 
 TIME_SLOTS = [
@@ -130,15 +130,15 @@ class Command(BaseCommand):
 
         teachers = self._ensure_teachers()
         courses = self._ensure_courses()
-        current_sections = self._ensure_sections(current_term, teachers, courses, term_offset=0)
-        next_sections = self._ensure_sections(next_term, teachers, courses, term_offset=7)
+        current_sections = self._ensure_sections(current_term, current_round, teachers, courses, term_offset=0)
+        next_sections = self._ensure_sections(next_term, next_round, teachers, courses, term_offset=7)
         students = list(
             User.objects.filter(profile__role=UserProfile.ROLE_STUDENT)
             .exclude(username__in=["zhang_xiaoming", "li_hua_student"])
             .order_by("id")[:300]
         )
 
-        created_or_updated = self._seed_enrollments(
+        touched = self._seed_enrollments(
             students=students,
             current_round=current_round,
             next_round=next_round,
@@ -156,14 +156,15 @@ class Command(BaseCommand):
         }
 
         self.stdout.write(self.style.SUCCESS("富化演示数据写入完成。"))
-        self.stdout.write(f"本轮处理选课记录：{created_or_updated} 条")
+        self.stdout.write(f"本轮处理选课记录：{touched} 条")
         self.stdout.write(f"当前数据总量：{summary}")
 
     def _ensure_teachers(self):
         existing = list(User.objects.filter(profile__role=UserProfile.ROLE_TEACHER).order_by("id"))
         teachers = existing[:]
 
-        for username, real_name, teacher_no, department in TEACHER_PROFILES:
+        for profile_data in TEACHER_PROFILES:
+            username, real_name, teacher_no, department = profile_data
             user, _ = User.objects.get_or_create(username=username)
             user.email = f"{username}@demo.edu"
             user.is_active = True
@@ -206,17 +207,18 @@ class Command(BaseCommand):
             courses.append(course)
         return courses
 
-    def _ensure_sections(self, term, teachers, courses, term_offset):
+    def _ensure_sections(self, term, round_instance, teachers, courses, term_offset):
         sections = []
         teacher_count = len(teachers)
 
         for index, course in enumerate(courses):
             weekday, start_time, end_time = TIME_SLOTS[(index + term_offset) % len(TIME_SLOTS)]
             section, _ = Section.objects.update_or_create(
-                term=term,
+                round=round_instance,
                 course=course,
                 name="1班",
                 defaults={
+                    "term": term,
                     "teacher": teachers[index % teacher_count],
                     "capacity": 80,
                     "weekday": weekday,
@@ -230,10 +232,11 @@ class Command(BaseCommand):
             if index < 12:
                 weekday, start_time, end_time = TIME_SLOTS[(index + term_offset + 9) % len(TIME_SLOTS)]
                 extra_section, _ = Section.objects.update_or_create(
-                    term=term,
+                    round=round_instance,
                     course=course,
                     name="2班",
                     defaults={
+                        "term": term,
                         "teacher": teachers[(index + 3) % teacher_count],
                         "capacity": 60,
                         "weekday": weekday,

@@ -12,6 +12,7 @@ from core.swagger import (
     COURSE_ID_PARAMETER,
     KEYWORD_PARAMETER,
     PAGINATION_PARAMETERS,
+    ROUND_ID_PARAMETER,
     TEACHER_ID_PARAMETER,
     TERM_ID_PARAMETER,
     paginated_response,
@@ -108,18 +109,22 @@ class SectionListCreateView(AdminWriteGuardMixin, APIView):
         operation_id="sections_list",
         summary="获取开课班级列表",
         description="查询开课班级。支持按学期、课程、教师和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
-        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, COURSE_ID_PARAMETER, TEACHER_ID_PARAMETER, KEYWORD_PARAMETER],
+        parameters=PAGINATION_PARAMETERS
+        + [TERM_ID_PARAMETER, ROUND_ID_PARAMETER, COURSE_ID_PARAMETER, TEACHER_ID_PARAMETER, KEYWORD_PARAMETER],
         responses=paginated_response("PaginatedSectionListResponse", SectionSerializer),
     )
     def get(self, request):
-        queryset = Section.objects.select_related("term", "course", "teacher", "teacher__profile").all().order_by("id")
+        queryset = Section.objects.select_related("term", "round", "course", "teacher", "teacher__profile").all().order_by("id")
         term_id = request.query_params.get("term_id")
+        round_id = request.query_params.get("round_id")
         course_id = request.query_params.get("course_id")
         teacher_id = request.query_params.get("teacher_id")
         keyword = request.query_params.get("q")
 
         if term_id:
             queryset = queryset.filter(term_id=term_id)
+        if round_id:
+            queryset = queryset.filter(round_id=round_id)
         if course_id:
             queryset = queryset.filter(course_id=course_id)
         if teacher_id:
@@ -159,7 +164,7 @@ class SectionDetailView(AdminWriteGuardMixin, APIView):
 
     def get_object(self, section_id):
         return get_object_or_404(
-            Section.objects.select_related("term", "course", "teacher", "teacher__profile"),
+            Section.objects.select_related("term", "round", "course", "teacher", "teacher__profile"),
             pk=section_id,
         )
 

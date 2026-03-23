@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -85,7 +85,7 @@ class TeacherCourseApplicationListCreateView(ApplicationPermissionMixin, APIView
 
     @extend_schema(
         summary="获取我的开课申报列表",
-        description="教师查询自己提交的开课申报。支持按学期、轮次、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        description="教师查询自己提交的开课申报。",
         parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, ROUND_ID_PARAMETER, STATUS_PARAMETER, KEYWORD_PARAMETER],
         responses=paginated_response("PaginatedTeacherCourseApplicationListResponse", CourseApplicationSerializer),
     )
@@ -104,7 +104,7 @@ class TeacherCourseApplicationListCreateView(ApplicationPermissionMixin, APIView
 
     @extend_schema(
         summary="提交开课申报",
-        description="教师提交新的开课申报，申报需明确绑定学期和轮次。",
+        description="教师提交新的开课申报，申报必须绑定学期和轮次。",
         request=CourseApplicationWriteSerializer,
         responses=CourseApplicationSerializer,
     )
@@ -142,7 +142,7 @@ class TeacherCourseApplicationDetailView(ApplicationPermissionMixin, APIView):
 
     @extend_schema(
         summary="修改开课申报",
-        description="教师修改自己的开课申报。已通过的申报不可修改；已驳回的申报重新提交后会复用原记录并重置为待审核。",
+        description="教师修改自己的开课申报。已通过的申报不可修改。",
         request=CourseApplicationWriteSerializer,
         responses=CourseApplicationSerializer,
     )
@@ -200,7 +200,7 @@ class AdminCourseApplicationListView(ApplicationPermissionMixin, APIView):
 
     @extend_schema(
         summary="获取开课申报审核列表",
-        description="管理员查询所有教师开课申报。支持按学期、轮次、教师、状态和关键字筛选；传入 `paginate=1` 时，返回真实分页结构。",
+        description="管理员查询所有教师开课申报。",
         parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, ROUND_ID_PARAMETER, TEACHER_ID_PARAMETER, STATUS_PARAMETER, KEYWORD_PARAMETER],
         responses=paginated_response("PaginatedAdminCourseApplicationListResponse", CourseApplicationSerializer),
     )
@@ -267,13 +267,6 @@ class AdminCourseApplicationReviewView(ApplicationPermissionMixin, APIView):
         if denied:
             return denied
 
-        application = get_object_or_404(
-            CourseApplication.objects.select_related("teacher", "teacher__profile", "term", "round"),
-            pk=application_id,
-        )
-        if application.status != CourseApplication.STATUS_PENDING:
-            return Response({"message": "该申报已审核，不能重复处理"}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = CourseApplicationReviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -281,6 +274,13 @@ class AdminCourseApplicationReviewView(ApplicationPermissionMixin, APIView):
         review_note = serializer.validated_data["review_note"]
 
         with transaction.atomic():
+            application = get_object_or_404(
+                CourseApplication.objects.select_related("teacher", "teacher__profile", "term", "round").select_for_update(),
+                pk=application_id,
+            )
+            if application.status != CourseApplication.STATUS_PENDING:
+                return Response({"message": "该申报已审核，不能重复处理"}, status=status.HTTP_400_BAD_REQUEST)
+
             application.review_note = review_note
             application.reviewed_by = request.user
             application.reviewed_at = timezone.now()
@@ -300,7 +300,13 @@ class AdminCourseApplicationReviewView(ApplicationPermissionMixin, APIView):
 
             validate_application_teacher(application.teacher)
             course = resolve_course_for_application(application)
-            section = create_section_for_application(application, course)
+            try:
+                section = create_section_for_application(application, course)
+            except IntegrityError:
+                return Response(
+                    {"message": "该申报已被处理，或已生成同名班级，请刷新后重试"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             application.status = CourseApplication.STATUS_APPROVED
             application.linked_course = course

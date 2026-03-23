@@ -149,7 +149,7 @@ class EnrollmentCollectionView(StudentGuardMixin, AdminGuardMixin, APIView):
                 with transaction.atomic():
                     round_instance = get_object_or_404(Round.objects.select_related("term"), pk=round_id)
                     section = get_object_or_404(
-                        Section.objects.select_related("term", "course", "teacher", "teacher__profile").select_for_update(),
+                        Section.objects.select_related("term", "round", "course", "teacher", "teacher__profile").select_for_update(),
                         pk=section_id,
                     )
 
@@ -157,8 +157,8 @@ class EnrollmentCollectionView(StudentGuardMixin, AdminGuardMixin, APIView):
                     if not round_instance.enabled or now < round_instance.start_at or now > round_instance.end_at:
                         return error_response("ROUND_CLOSED", "当前轮次未开放，暂时不能选课")
 
-                    if section.term_id != round_instance.term_id:
-                        return error_response("ROUND_SECTION_MISMATCH", "所选班级不属于当前轮次对应学期")
+                    if section.round_id != round_instance.id:
+                        return error_response("ROUND_SECTION_MISMATCH", "所选班级不属于当前轮次")
 
                     profile = ensure_user_profile(student)
                     if round_instance.target_scope == Round.SCOPE_STUDENT and profile.role != UserProfile.ROLE_STUDENT:
@@ -458,7 +458,7 @@ class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
     @extend_schema(
         summary="获取授课班级列表",
         description="教师查看自己负责的开课班级，管理员可查看全部。支持按学期筛选；传入 `paginate=1` 时，返回真实分页结构。",
-        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER],
+        parameters=PAGINATION_PARAMETERS + [TERM_ID_PARAMETER, ROUND_ID_PARAMETER],
         responses=paginated_response("PaginatedTeacherSectionListResponse", TeacherSectionSerializer),
     )
     def get(self, request):
@@ -466,7 +466,7 @@ class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
         if denied:
             return denied
 
-        queryset = Section.objects.select_related("term", "course", "teacher", "teacher__profile").annotate(
+        queryset = Section.objects.select_related("term", "round", "course", "teacher", "teacher__profile").annotate(
             enrolled_count=Count("enrollments", filter=Q(enrollments__status=Enrollment.STATUS_ENROLLED))
         )
 
@@ -474,14 +474,19 @@ class TeacherSectionListView(TeacherOrAdminGuardMixin, APIView):
             queryset = queryset.filter(teacher=request.user)
 
         term_id = request.query_params.get("term_id")
+        round_id = request.query_params.get("round_id")
         if term_id:
             queryset = queryset.filter(term_id=term_id)
+        if round_id:
+            queryset = queryset.filter(round_id=round_id)
 
         data = [
             {
                 "id": section.id,
                 "term_id": section.term_id,
                 "term_name": section.term.name,
+                "round_id": section.round_id,
+                "round_name": section.round.name if section.round else "",
                 "course_id": section.course_id,
                 "course_code": section.course.code,
                 "course_name": section.course.name,
