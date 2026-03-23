@@ -1,29 +1,31 @@
 import { computed, reactive } from 'vue'
 
 const state = reactive({
-  pendingCount: 0,
+  routeLoading: false,
+  requestPendingCount: 0,
 })
 
 export const pageLoadingState = reactive({
   text: '页面加载中...',
-  isVisible: computed(() => state.pendingCount > 0),
+  isVisible: computed(() => state.routeLoading || state.requestPendingCount > 0),
 })
 
 export function startRouteLoading() {
-  state.pendingCount += 1
+  state.routeLoading = true
 }
 
 export function finishRouteLoading() {
-  if (state.pendingCount > 0) {
-    state.pendingCount -= 1
-  }
+  state.routeLoading = false
 }
 
 export async function withPageLoading(task) {
-  startRouteLoading()
+  state.requestPendingCount += 1
+
   try {
     return await task()
   } finally {
-    finishRouteLoading()
+    if (state.requestPendingCount > 0) {
+      state.requestPendingCount -= 1
+    }
   }
 }
